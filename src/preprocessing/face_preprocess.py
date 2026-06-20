@@ -80,12 +80,30 @@ def load_and_split(csv_path: Path):
     return X_train, y_train, X_test, y_test
 
 
+def _synthetic_fallback():
+    """FER2013 না থাকলে synthetic data দিয়ে pipeline verify করে।"""
+    rng = np.random.default_rng(SEED)
+    n = 500
+    X = rng.random((n, 1, IMG_SIZE, IMG_SIZE), dtype=np.float32)
+    y = rng.integers(0, NUM_EMOTION_CLASSES, size=n, dtype=np.int64)
+
+    split = int(n * 0.8)
+    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+    np.save(DATA_PROCESSED / "X_train.npy", X[:split])
+    np.save(DATA_PROCESSED / "y_train.npy", y[:split])
+    np.save(DATA_PROCESSED / "X_test.npy",  X[split:])
+    np.save(DATA_PROCESSED / "y_test.npy",  y[split:])
+    print(f"Synthetic fallback saved — train: {X[:split].shape}  test: {X[split:].shape}")
+
+
 def preprocess(apply_augmentation: bool = True):
     csv_path = DATA_RAW / "fer2013.csv"
     if not csv_path.exists():
-        print(f"FER2013 না পাওয়া গেছে: {csv_path}")
-        print("Kaggle থেকে ডাউনলোড করো: https://www.kaggle.com/datasets/msambare/fer2013")
-        print("তারপর fer2013.csv কে data/raw/ এ রাখো।")
+        print(f"FER2013 not found: {csv_path}")
+        print("Download from: https://www.kaggle.com/datasets/msambare/fer2013")
+        print("Place fer2013.csv in data/raw/")
+        print("\nRunning synthetic fallback to verify pipeline...")
+        _synthetic_fallback()
         return
 
     X_train, y_train, X_test, y_test = load_and_split(csv_path)

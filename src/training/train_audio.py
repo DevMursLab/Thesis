@@ -149,7 +149,8 @@ def main():
     print(f"\nBest Dev F1: {best_f1:.4f}")
     final = evaluate(model, dev_dl, device)
     print(classification_report(final["true"], final["preds"],
-                                 target_names=["Not Depressed", "Depressed"]))
+                                 target_names=["Not Depressed", "Depressed"],
+                                 zero_division=0))
 
     METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
     summary = {
