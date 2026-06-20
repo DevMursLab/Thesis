@@ -79,8 +79,8 @@ The goal is an accessible, interpretable tool that could assist clinicians in ea
 | 0 | Project scaffolding (models, configs, training scripts) | — | ✅ Done |
 | 1 | Face branch — CNN emotion classifier | FER2013 | ✅ Done |
 | 2 | DAIC-WOZ face frame extraction + fine-tune CNN | DAIC-WOZ | ✅ Done |
-| 3 | Audio branch — MFCC + Bi-LSTM | DAIC-WOZ audio | ⏳ Next |
-| 4 | Multimodal fusion (face + audio) | DAIC-WOZ | ⏳ |
+| 3 | Audio branch — MFCC + Bi-LSTM (DAIC-WOZ) | DAIC-WOZ audio | ✅ Done |
+| 4 | Multimodal fusion (face + audio) | DAIC-WOZ | ⏳ Next |
 | 5 | Temporal modeling (LSTM over frame sequences) | DAIC-WOZ | ⏳ |
 | 6 | Grad-CAM explainability visualizations | — | ⏳ |
 | 7 | Evaluation — confusion matrix, ROC, F1 | — | ⏳ |
@@ -99,19 +99,22 @@ depression_thesis/
 ├── src/
 │   ├── preprocessing/
 │   │   ├── face_preprocess.py   # FER2013 loading + augmentation
-│   │   └── daic_preprocess.py   # DAIC-WOZ frame extraction + labels
+│   │   ├── daic_preprocess.py   # DAIC-WOZ frame extraction + labels
+│   │   └── audio_preprocess.py  # MFCC + delta + delta2 extraction
 │   ├── models/
 │   │   ├── face_cnn.py          # CNN for facial emotion features
 │   │   ├── audio_lstm.py        # Bi-LSTM for MFCC audio features
 │   │   └── fusion.py            # Feature-level fusion head
 │   ├── training/
 │   │   ├── train_face.py        # Phase 1 — FER2013 emotion CNN
-│   │   └── train_face_daic.py   # Phase 2 — fine-tune on DAIC-WOZ
+│   │   ├── train_face_daic.py   # Phase 2 — fine-tune on DAIC-WOZ
+│   │   └── train_audio.py       # Phase 3 — Bi-LSTM on MFCC features
 │   └── explainability/
 │       └── gradcam.py           # Grad-CAM heatmap generator
 ├── notebooks/
 │   ├── phase1_face_cnn.ipynb        # Phase 1 — FER2013 CNN training
-│   └── phase2_daic_faceframes.ipynb # Phase 2 — DAIC-WOZ fine-tuning
+│   ├── phase2_daic_faceframes.ipynb # Phase 2 — DAIC-WOZ fine-tuning
+│   └── phase3_audio_lstm.ipynb      # Phase 3 — Bi-LSTM audio training
 ├── data/
 │   ├── raw/                     # FER2013 CSV, DAIC-WOZ files (not committed)
 │   └── processed/               # Preprocessed arrays
