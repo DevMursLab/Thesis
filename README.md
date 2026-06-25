@@ -96,8 +96,8 @@ This project builds a **tri-modal, fairness-aware, explainable** depression risk
 | 2 | DAIC-WOZ face branch — CLNF Action Unit preprocessing | DAIC-WOZ | ✅ Done |
 | 3 | Audio branch — MFCC+Δ+ΔΔ extraction + Bi-LSTM | DAIC-WOZ | ✅ Done |
 | 3+ | Text branch — transcript TF-IDF bigram features | DAIC-WOZ | ✅ Done |
-| 4 | Cross-modal attention fusion (tri-modal) | DAIC-WOZ | ⏳ Next |
-| 5 | Fairness-aware training (gender-equalized F1) | DAIC-WOZ | ⏳ |
+| 4 | Cross-modal attention fusion (tri-modal) + Colab notebook | DAIC-WOZ | ✅ Done |
+| 5 | Fairness-aware training (gender-equalized F1) | DAIC-WOZ | ⏳ Next |
 | 6 | Grad-CAM + attention explainability | — | ⏳ |
 | 7 | Ablation study + SOTA comparison + statistical tests | — | ⏳ |
 | 8 | Paper draft → IEEE submission | — | ⏳ |
@@ -117,20 +117,28 @@ depression_thesis/
 │   │   ├── face_preprocess.py   # FER2013 loading + augmentation
 │   │   ├── daic_preprocess.py   # DAIC-WOZ frame extraction + labels
 │   │   └── audio_preprocess.py  # MFCC + delta + delta2 extraction
+│   ├── preprocessing/
+│   │   ├── face_preprocess.py   # FER2013 loading + augmentation
+│   │   ├── daic_preprocess.py   # CLNF AU extraction (DAIC-WOZ)
+│   │   ├── audio_preprocess.py  # MFCC + delta + delta2 extraction
+│   │   └── text_preprocess.py   # Transcript TF-IDF bigram extraction
 │   ├── models/
-│   │   ├── face_cnn.py          # CNN for facial emotion features
+│   │   ├── face_cnn.py          # CNN for FER2013 emotion pre-training
 │   │   ├── audio_lstm.py        # Bi-LSTM for MFCC audio features
-│   │   └── fusion.py            # Feature-level fusion head
+│   │   ├── encoders.py          # FaceAUEncoder · AudioEncoder · TextEncoder (256-dim each)
+│   │   └── fusion_attention.py  # CrossModalAttention + TriModalFusionModel (7.8M params)
 │   ├── training/
 │   │   ├── train_face.py        # Phase 1 — FER2013 emotion CNN
-│   │   ├── train_face_daic.py   # Phase 2 — fine-tune on DAIC-WOZ
-│   │   └── train_audio.py       # Phase 3 — Bi-LSTM on MFCC features
+│   │   ├── train_face_daic.py   # Phase 2 — CLNF AU branch fine-tune
+│   │   ├── train_audio.py       # Phase 3 — Bi-LSTM on MFCC features
+│   │   └── train_fusion.py      # Phase 4 — tri-modal fairness-aware training
 │   └── explainability/
 │       └── gradcam.py           # Grad-CAM heatmap generator
 ├── notebooks/
 │   ├── phase1_face_cnn.ipynb        # Phase 1 — FER2013 CNN training
 │   ├── phase2_daic_faceframes.ipynb # Phase 2 — DAIC-WOZ fine-tuning
-│   └── phase3_audio_lstm.ipynb      # Phase 3 — Bi-LSTM audio training
+│   ├── phase3_audio_lstm.ipynb      # Phase 3 — Bi-LSTM audio training
+│   └── phase4_fusion.ipynb          # Phase 4 — Tri-modal cross-attention fusion
 ├── data/
 │   ├── raw/                     # FER2013 CSV, DAIC-WOZ files (not committed)
 │   └── processed/               # Preprocessed arrays
@@ -189,13 +197,16 @@ python src/explainability/gradcam.py  # prints Grad-CAM heatmap shape
 
 ## Results
 
-> Phase 1 in progress — results will be updated here after training on FER2013.
+Preliminary results on DAIC-WOZ (34-participant dev split, CPU baseline, 5 epochs):
 
-| Model | Dataset | Accuracy | F1 (macro) | AUC |
-|-------|---------|----------|------------|-----|
-| Face CNN (Phase 1) | FER2013 | — | — | — |
-| Audio Bi-LSTM (Phase 3) | DAIC-WOZ | — | — | — |
-| Fusion Model (Phase 4) | DAIC-WOZ | — | — | — |
+| Model | Modalities | Dataset | F1 | AUC |
+|-------|-----------|---------|-----|-----|
+| Face AU Bi-LSTM (Phase 2) | Face only | DAIC-WOZ | — | — |
+| Audio Bi-LSTM (Phase 3) | Audio only | DAIC-WOZ | — | — |
+| **Tri-Modal Fusion (Phase 4)** | **Face + Audio + Text** | **DAIC-WOZ** | *in progress* | **0.66** |
+
+> AUC improved from 0.49 (random) → 0.66 in 5 CPU epochs — validates the cross-modal signal.
+> GPU training (30 epochs) expected on Colab: see `notebooks/phase4_fusion.ipynb`.
 
 ---
 
