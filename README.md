@@ -1,15 +1,18 @@
-# Multimodal Depression Risk Detection
+# Tri-Modal Depression Risk Detection
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Dataset-DAIC--WOZ-orange?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/Modalities-Face%20%7C%20Audio%20%7C%20Text-purple?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/Status-Active%20Research-green?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge"/>
 </p>
 
 <p align="center">
-  <b>A multimodal deep learning system for depression risk screening from facial expressions and voice patterns.</b><br/>
-  CNN (face) · LSTM (audio) · Feature Fusion · Grad-CAM Explainability
+  <b>A tri-modal deep learning system for depression risk screening<br/>
+  from facial action units, speech acoustics, and linguistic patterns.</b><br/><br/>
+  CLNF Action Units (face) · MFCC Bi-LSTM (audio) · TF-IDF + Bigrams (text) · Cross-Modal Attention Fusion · Grad-CAM XAI · Fairness-Aware Training
 </p>
 
 ---
@@ -20,54 +23,66 @@
 
 ## Overview
 
-Depression affects over **280 million people** globally (WHO, 2023), yet most cases go undetected. This project builds a **non-invasive, automated screening system** that analyzes:
+Depression affects over **280 million people** globally (WHO, 2023), yet fewer than half receive adequate treatment. Existing automated screening systems rely on a single modality — missing the rich cross-modal signal that clinicians naturally integrate.
 
-- **Facial expressions** → Convolutional Neural Network (CNN) trained on FER2013
-- **Speech patterns** → LSTM over MFCC features from DAIC-WOZ audio
-- **Combined decision** → Feature-level fusion with a classification head
-- **Why the model decided** → Grad-CAM heatmaps for explainability
+This project builds a **tri-modal, fairness-aware, explainable** depression risk screening system trained on the **DAIC-WOZ clinical interview corpus** (USC Institute for Creative Technologies):
 
-The goal is an accessible, interpretable tool that could assist clinicians in early detection — not replace them.
+| Modality | Signal | Feature Extraction |
+|----------|--------|-------------------|
+| **Face** | Facial muscle dynamics | 20-channel CLNF Action Units (OpenFace) |
+| **Audio** | Vocal acoustics & prosody | MFCC + Δ + ΔΔ → Bi-LSTM |
+| **Text** | Linguistic depression markers | Participant transcript → TF-IDF bigrams |
+
+**Novel contributions:**
+- Cross-modal attention fusion (learns *when* each modality is more informative)
+- Gender fairness constraints during training (equal F1 across demographic groups)
+- Grad-CAM + attention rollout for clinical explainability
+- Ablation study validating each modality's independent contribution
+
+> ⚠️ **Clinical disclaimer:** This is an academic *screening* prototype — NOT a diagnostic tool. All outputs must be reviewed by a licensed mental health professional.
 
 ---
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────────────────────────┐
-                    │           MULTIMODAL PIPELINE               │
-                    └─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    TRI-MODAL DEPRESSION SCREENING PIPELINE                │
+└──────────────────────────────────────────────────────────────────────────┘
 
-  Face (48×48 image)                     Voice (raw audio)
-        │                                       │
-        ▼                                       ▼
-  ┌───────────┐                         ┌───────────────┐
-  │  Conv2D   │  ×3 blocks              │  MFCC Extract │
-  │  BN+ReLU  │  (32→64→128 ch)        │  (40 coeffs)  │
-  │  MaxPool  │                         └───────┬───────┘
-  └─────┬─────┘                                 │
-        │                                       ▼
-        ▼                                 ┌───────────┐
-  ┌───────────┐                          │ Bi-LSTM   │  2 layers
-  │  FC 256   │  ← face feature          │ hidden=128│
-  │  Dropout  │                          └─────┬─────┘
-  └─────┬─────┘                                │
-        │                               audio feature
-        └──────────────┬────────────────┘
-                       ▼
-              ┌─────────────────┐
-              │  Feature Concat │  (256 + 256 = 512 dim)
-              │  FC 256 → 64   │
-              │  Classifier    │
-              └────────┬────────┘
-                       ▼
-              Low Risk / High Risk
+  FACE (CLNF AUs)          AUDIO (_AUDIO.wav)         TEXT (transcript)
+  20 Action Units           MFCC + Δ + ΔΔ             Participant speech
+  200 time steps            300 time steps             TF-IDF bigrams
+        │                         │                          │
+        ▼                         ▼                          ▼
+  ┌───────────┐           ┌──────────────┐          ┌──────────────┐
+  │  AU-LSTM  │           │   Bi-LSTM    │          │  FC 256      │
+  │  Bi-dir   │           │   2 layers   │          │  ReLU        │
+  │  128 hid  │           │   128 hid    │          │  Dropout     │
+  └─────┬─────┘           └──────┬───────┘          └──────┬───────┘
+        │                        │                          │
+        │   face_feat (256)      │  audio_feat (256)        │  text_feat (256)
+        └────────────────────────┼──────────────────────────┘
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  Cross-Modal Attention  │  ← learns which modality
+                    │  Fusion Layer           │    matters most per sample
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  Fairness-Aware Head    │  ← gender-equalized training
+                    │  FC 512 → 128 → 2      │
+                    └────────────┬────────────┘
+                                 ▼
+                         Not Depressed / Depressed
 
-                       │  (Grad-CAM)
-                       ▼
-              🔥 Heatmap on face
-              showing which region
-              drove the prediction
+                                 │
+                    ┌────────────▼────────────┐
+                    │    Explainability       │
+                    │  Grad-CAM (face AUs)   │
+                    │  Attention rollout      │
+                    └─────────────────────────┘
 ```
 
 ---
@@ -76,15 +91,16 @@ The goal is an accessible, interpretable tool that could assist clinicians in ea
 
 | Phase | Task | Dataset | Status |
 |:-----:|------|---------|:------:|
-| 0 | Project scaffolding (models, configs, training scripts) | — | ✅ Done |
-| 1 | Face branch — CNN emotion classifier | FER2013 | ✅ Done |
-| 2 | DAIC-WOZ face frame extraction + fine-tune CNN | DAIC-WOZ | ✅ Done |
-| 3 | Audio branch — MFCC + Bi-LSTM (DAIC-WOZ) | DAIC-WOZ audio | ✅ Done |
-| 4 | Multimodal fusion (face + audio) | DAIC-WOZ | ⏳ Next |
-| 5 | Temporal modeling (LSTM over frame sequences) | DAIC-WOZ | ⏳ |
-| 6 | Grad-CAM explainability visualizations | — | ⏳ |
-| 7 | Evaluation — confusion matrix, ROC, F1 | — | ⏳ |
-| 8 | Paper draft + preprint submission | — | ⏳ |
+| 0 | Project scaffolding — models, configs, training pipeline | — | ✅ Done |
+| 1 | Face emotion pre-training (CNN on FER2013) | FER2013 | ✅ Done |
+| 2 | DAIC-WOZ face branch — CLNF Action Unit preprocessing | DAIC-WOZ | ✅ Done |
+| 3 | Audio branch — MFCC+Δ+ΔΔ extraction + Bi-LSTM | DAIC-WOZ | ✅ Done |
+| 3+ | Text branch — transcript TF-IDF bigram features | DAIC-WOZ | ✅ Done |
+| 4 | Cross-modal attention fusion (tri-modal) | DAIC-WOZ | ⏳ Next |
+| 5 | Fairness-aware training (gender-equalized F1) | DAIC-WOZ | ⏳ |
+| 6 | Grad-CAM + attention explainability | — | ⏳ |
+| 7 | Ablation study + SOTA comparison + statistical tests | — | ⏳ |
+| 8 | Paper draft → IEEE submission | — | ⏳ |
 
 Each phase is gated on the previous. No phase is started until the prior one is validated.
 
