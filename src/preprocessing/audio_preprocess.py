@@ -27,26 +27,23 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 import numpy as np
 import pandas as pd
-from configs.config import (DATA_RAW, DATA_PROCESSED, N_MFCC,
-                             SAMPLE_RATE, AUDIO_WINDOW_SEC, SEED)
+from configs.config import (DATA_PROCESSED, N_MFCC, DAIC_RAW, DAIC_LABELS,
+                             SAMPLE_RATE, AUDIO_TIME_STEPS, SEED)
 
-PHQ8_THRESHOLD   = 10
-DAIC_RAW         = DATA_RAW / "daic"
-AUDIO_OUT        = DATA_PROCESSED / "daic_audio"
+AUDIO_OUT  = DATA_PROCESSED / "daic_audio"
+MAX_TIME_STEPS = AUDIO_TIME_STEPS
 
 # fixed sequence length (time steps) — pad/trim to this
 MAX_TIME_STEPS   = 300   # ~9 seconds at hop_length=512, sr=16000
 HOP_LENGTH       = 512
 
 
-def load_labels(split_csv: Path) -> pd.DataFrame:
-    df = pd.read_csv(split_csv)
+def load_labels(split: str) -> pd.DataFrame:
+    csv_path = DAIC_LABELS / f"{split}_split_Depression_AVEC2017.csv"
+    df = pd.read_csv(csv_path)
     df.columns = df.columns.str.strip()
-    id_col    = next(c for c in df.columns if "participant" in c.lower())
-    score_col = next(c for c in df.columns if "phq" in c.lower() and "score" in c.lower())
-    df = df[[id_col, score_col]].copy()
-    df.columns = ["participant_id", "phq8"]
-    df["label"] = (df["phq8"] >= PHQ8_THRESHOLD).astype(int)
+    df = df[["Participant_ID", "PHQ8_Binary", "PHQ8_Score"]].copy()
+    df.columns = ["participant_id", "label", "phq8"]
     return df
 
 
@@ -100,11 +97,9 @@ def process_split(label_df: pd.DataFrame, split_name: str):
         label = int(row["label"])
         phq8  = float(row["phq8"])
 
-        audio_dir   = DAIC_RAW / f"{pid}_P"
-        audio_files = list(audio_dir.glob(f"{pid}_AUDIO.wav")) if audio_dir.exists() else []
-        if not audio_files:
-            # some DAIC versions use _P.wav
-            audio_files = list(audio_dir.glob(f"{pid}_P.wav")) if audio_dir.exists() else []
+        # flat folder structure — all files in DAIC_RAW directly
+        audio_file = DAIC_RAW / f"{pid}_AUDIO.wav"
+        audio_files = [audio_file] if audio_file.exists() else []
 
         if not audio_files:
             print(f"  [SKIP] {pid}_P — audio not found")
@@ -138,20 +133,19 @@ def process_split(label_df: pd.DataFrame, split_name: str):
 
 def preprocess():
     if not DAIC_RAW.exists():
-        print(f"DAIC-WOZ data না পাওয়া গেছে: {DAIC_RAW}")
-        print("Access: https://dcapswoz.isi.edu/")
-        print("\nSynthetic fallback চালাচ্ছি...")
+        print(f"DAIC-WOZ not found: {DAIC_RAW}")
+        print("Running synthetic fallback...")
         _synthetic_fallback()
         return
 
-    for split, csv_name in [("train", "train_split_Depression_AVEC2017.csv"),
-                              ("dev",   "dev_split_Depression_AVEC2017.csv")]:
-        csv_path = DAIC_RAW / csv_name
+    print(f"DAIC-WOZ found: {DAIC_RAW}")
+    for split in ["train", "dev"]:
+        csv_path = DAIC_LABELS / f"{split}_split_Depression_AVEC2017.csv"
         if not csv_path.exists():
             print(f"[SKIP] {csv_path} not found")
             continue
         print(f"\nProcessing {split} split...")
-        labels = load_labels(csv_path)
+        labels = load_labels(split)
         process_split(labels, split)
 
     print("\nDone. Output at:", AUDIO_OUT)
