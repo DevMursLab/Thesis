@@ -6,7 +6,17 @@ __pycache__/
 venv/
 .venv/
 
-# Data & models (too large for git)
+# DAIC-WOZ raw dataset (restricted — do not commit)
+daicwoz/
+util/
+util.zip
+documents/
+
+# Reference PDFs (not source code)
+*.pdf
+*.m
+
+# Data & model artifacts (too large for git)
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
@@ -14,8 +24,9 @@ data/processed/*
 *.npy
 *.pth
 *.h5
+*.pkl
 
-# Results (generated files)
+# Results (generated — not source)
 results/figures/*
 results/metrics/*
 !results/figures/.gitkeep
