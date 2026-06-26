@@ -264,6 +264,38 @@ Equal-Opportunity gap toward zero.
 
 ---
 
+## Explainability (Phase 6)
+
+A clinician will not act on a black-box flag. We attach **three complementary,
+mutually-validating** explanations — when two *independent* methods agree, the
+explanation is trustworthy rather than an artifact of one technique:
+
+```
+  ┌────────────────────────────┬────────────────┬─────────────────────────────┐
+  │  Method                    │  Type          │  Answers                    │
+  ├────────────────────────────┼────────────────┼─────────────────────────────┤
+  │  Cross-modal attention     │  model-        │  Which modality does the    │
+  │  rollout                   │  intrinsic     │  model rely on?             │
+  │  Gradient × input saliency │  gradient      │  Which facial Action Units  │
+  │                            │                │  drive the prediction?      │
+  │  Leave-one-modality-out    │  occlusion     │  Does removing a modality   │
+  │  ablation                  │                │  actually reduce AUC?       │
+  └────────────────────────────┴────────────────┴─────────────────────────────┘
+```
+
+**Convergent finding on the trained model:** attention rollout *and* ablation
+independently rank **audio** as the most informative modality, and **AU04
+(Brow Lowerer)** — a FACS unit established in affective science as a marker of
+depressed affect — surfaces among the top gradient-attributed Action Units.
+Two independent methods agreeing is the strongest evidence the model learned
+*clinically plausible* features rather than spurious correlations.
+
+> **Reproduce:** `python src/explainability/explain_fusion.py` → figures in `results/figures/` + `results/metrics/phase6_explainability.json`
+
+*Grounded in Shrikumar et al. (ICML 2017) and Abnar & Zuidema (ACL 2020).*
+
+---
+
 ## Phased Roadmap
 
 | # | Phase | What | Status |
@@ -275,8 +307,8 @@ Equal-Opportunity gap toward zero.
 | 3+ | Text branch | Transcript TF-IDF bigram encoding | ✅ Complete |
 | 4 | Tri-modal fusion | Cross-modal attention + fairness loss + Colab notebook | ✅ Complete |
 | 5 | Fairness audit | 4-criterion gender fairness audit + Colab notebook | ✅ Complete |
-| **6** | **Explainability** | **Grad-CAM on AU sequences + attention rollout** | **⏳ Next** |
-| 7 | Ablation + SOTA | Each modality alone vs. combined; comparison table | ⏳ |
+| 6 | Explainability | Attention rollout + gradient saliency + ablation | ✅ Complete |
+| **7** | **Ablation + SOTA** | **Each modality alone vs. combined; comparison table** | **⏳ Next** |
 | 8 | Paper | IEEE / Elsevier submission | ⏳ |
 
 ---
@@ -312,14 +344,16 @@ depression_thesis/
 │   │   └── fairness_analysis.py     ← Phase 5: 4-criterion gender fairness audit
 │   │
 │   └── explainability/
-│       └── gradcam.py               ← Grad-CAM heatmap for AU time-series
+│       ├── gradcam.py               ← Grad-CAM heatmap for the FER2013 CNN
+│       └── explain_fusion.py        ← Phase 6: attention rollout + saliency + ablation
 │
 ├── notebooks/
 │   ├── phase1_face_cnn.ipynb        ← Colab: FER2013 emotion CNN
 │   ├── phase2_daic_faceframes.ipynb ← Colab: DAIC-WOZ face fine-tuning
 │   ├── phase3_audio_lstm.ipynb      ← Colab: MFCC Bi-LSTM training
 │   ├── phase4_fusion.ipynb          ← Colab: tri-modal fusion + attention viz
-│   └── phase5_fairness.ipynb        ← Colab: gender fairness audit + figures
+│   ├── phase5_fairness.ipynb        ← Colab: gender fairness audit + figures
+│   └── phase6_explainability.ipynb  ← Colab: attention + saliency + ablation XAI
 │
 ├── data/
 │   ├── raw/          ← fer2013.csv + daicwoz/ files  [NOT committed — see .gitignore]
