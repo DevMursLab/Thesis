@@ -36,13 +36,15 @@ from sklearn.metrics import (
 )
 
 from configs.config import (DATA_PROCESSED, RESULTS, FIGURES, METRICS,
-                            N_MFCC, VOCAB_SIZE, N_AU_FEATURES, BATCH_SIZE)
+                            N_MFCC, VOCAB_SIZE, N_AU_FEATURES, BATCH_SIZE,
+                            EMBED_DIM)
 from src.models.fusion_attention import TriModalFusionModel
 
 FACE_OUT  = DATA_PROCESSED / "daic_faces"
 AUDIO_OUT = DATA_PROCESSED / "daic_audio"
 TEXT_OUT  = DATA_PROCESSED / "daic_text"
 MODEL_P   = RESULTS / "fusion_trimodal_best.pth"
+PHASE4_P  = METRICS / "phase4_metrics.json"
 REPORT_P  = METRICS / "phase5_fairness.json"
 
 GROUP_NAMES = {0: "Male", 1: "Female"}
@@ -66,9 +68,19 @@ def load_dev():
     return Xf, Xa, Xt, y, g
 
 
-def run_inference(model, Xf, Xa, Xt, device):
+def load_threshold():
+    """Reuse the decision threshold tuned during training (default 0.5)."""
+    if PHASE4_P.exists():
+        try:
+            return float(json.loads(PHASE4_P.read_text()).get("decision_threshold", 0.5))
+        except Exception:
+            pass
+    return 0.5
+
+
+def run_inference(model, Xf, Xa, Xt, device, threshold=0.5):
     model.eval()
-    preds, probs = [], []
+    probs = []
     with torch.no_grad():
         for i in range(0, len(Xf), BATCH_SIZE):
             sl = slice(i, i + BATCH_SIZE)
@@ -77,10 +89,10 @@ def run_inference(model, Xf, Xa, Xt, device):
                 torch.tensor(Xa[sl]).to(device),
                 torch.tensor(Xt[sl]).to(device),
             )
-            p = torch.softmax(logits, 1)[:, 1].cpu().numpy()
-            probs.extend(p)
-            preds.extend((p >= 0.5).astype(int))
-    return np.array(preds), np.array(probs)
+            probs.extend(torch.softmax(logits, 1)[:, 1].cpu().numpy())
+    probs = np.array(probs)
+    preds = (probs >= threshold).astype(int)
+    return preds, probs
 
 
 # --------------------------------------------------------------------------- #
@@ -223,10 +235,12 @@ def main():
 
     model = TriModalFusionModel(
         n_au=N_AU_FEATURES, n_mfcc=N_MFCC*3,
-        vocab_size=VOCAB_SIZE, embed_dim=256).to(device)
+        vocab_size=VOCAB_SIZE, embed_dim=EMBED_DIM).to(device)
     model.load_state_dict(torch.load(MODEL_P, map_location=device))
 
-    preds, probs = run_inference(model, Xf, Xa, Xt, device)
+    threshold = load_threshold()
+    print(f"Decision threshold (from training): {threshold:.2f}")
+    preds, probs = run_inference(model, Xf, Xa, Xt, device, threshold)
 
     pg   = per_group_metrics(y, preds, probs, g)
     gaps = fairness_gaps(pg)
@@ -272,6 +286,7 @@ def main():
         "analysis": "Algorithmic Fairness Audit (gender)",
         "protected_attribute": "gender",
         "fairness_threshold": FAIR_THRESHOLD,
+        "decision_threshold": threshold,
         "per_group": pg,
         "gaps": {k: v for k, v in gaps.items() if k != "verdict"},
         "verdict": gaps["verdict"],
