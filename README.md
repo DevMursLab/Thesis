@@ -202,16 +202,33 @@ Test  :  47 participants  (held out — used only for final evaluation)
 
 ## Results
 
-### Phase 4 — Tri-Modal Fusion Baseline (5 CPU epochs)
+### Phase 4 — Tri-Modal Fusion (CPU baseline, 107 train / 34 dev)
 
-| Model | Modalities | AUC | F1 | Fairness Gap |
-|-------|-----------|:---:|:--:|:------------:|
-| Random baseline | — | 0.50 | — | — |
-| Audio Bi-LSTM (Phase 3) | Audio only | — | — | — |
-| **Tri-Modal Fusion** | **Face + Audio + Text** | **0.66** | *training* | *pending* |
-| *(Target — 30 GPU epochs)* | *Face + Audio + Text* | *> 0.80* | *> 0.70* | *< 0.05* |
+| Model | Modalities | Params | AUC | F1 | Acc |
+|-------|-----------|:------:|:---:|:--:|:---:|
+| Random baseline | — | — | 0.50 | — | — |
+| **Tri-Modal Fusion** | **Face + Audio + Text** | **638K** | **0.73** | **0.59** | 0.59 |
+| *(Target — GPU, full data)* | *Face + Audio + Text* | — | *> 0.80* | *> 0.70* | — |
 
-> AUC jumped from **0.49 → 0.66** in just 5 CPU epochs on 107 training samples — strongly validating the cross-modal signal. Full GPU training on Colab expected to reach 0.80+ AUC.
+> **Dev AUC = 0.73**, balanced F1 = 0.59 with *both* classes predicted
+> (Not-Depressed recall 0.45 · Depressed recall 0.83). An earlier 7.8M-param
+> model collapsed to memorizing the 107 training samples (AUC 0.49); shrinking
+> to 638K params + heavy regularization + early stopping recovered a genuinely
+> discriminative model. See commit history for the full diagnosis.
+
+### Phase 5 — Fairness Audit (gender)
+
+| Criterion | Male | Female | Gap | Verdict |
+|-----------|:----:|:------:|:---:|:-------:|
+| Equal Opportunity (TPR) | 0.71 | 1.00 | **0.286** | ⚠ Biased |
+| Predictive Parity (PPV) | 0.46 | 0.46 | 0.000 | ✅ Fair |
+| Demographic Parity | 0.61 | 0.69 | 0.076 | ✅ Fair |
+| F1 | 0.56 | 0.63 | 0.069 | ✅ Fair |
+
+> **A real finding, not trivial parity:** the model detects depression in 100%
+> of depressed women but only 71% of depressed men (Equal-Opportunity gap 0.286).
+> The audit demonstrably *detects* bias when present — motivating the
+> training-time fairness term `λ·(TPR_M − TPR_F)²` as the proposed remedy.
 
 ---
 
