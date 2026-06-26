@@ -37,6 +37,24 @@ N_MFCC           = 40
 AUDIO_WINDOW_SEC = 3.0
 AUDIO_TIME_STEPS = 300          # MFCC time steps per participant
 
+# ---- COVAREP / FORMANT (clinical-grade audio) ----
+N_COVAREP        = 74           # COVAREP features per frame (F0, NAQ, QOQ, MCEP...)
+N_FORMANT        = 5            # formant frequencies F1-F5
+AUDIO_FEAT_DIM   = N_MFCC * 3 + N_COVAREP + N_FORMANT  # 120 + 74 + 5 = 199
+
+# ---- Multi-task learning ----
+N_PHQ_SYMPTOMS   = 8            # PHQ-8 has 8 individual symptom items (0-3 each)
+PHQ8_MAX         = 24.0         # max possible PHQ-8 score
+
+# ---- Modality dropout (missing-modality robustness) ----
+MODALITY_DROPOUT_P = 0.15       # prob of zeroing each modality per batch during training
+
+# ---- Multi-task loss weights ----
+LAMBDA_SCORE    = 0.3           # PHQ-8 score regression weight
+LAMBDA_SYMPTOM  = 0.2           # 8-symptom classification weight
+LAMBDA_FAIRNESS = 0.1           # equalized odds fairness weight
+FAIRNESS_WARMUP = 8             # epochs before fairness term activates
+
 # ---- Text branch ----
 MAX_TEXT_LEN  = 128             # max tokens per participant transcript
 VOCAB_SIZE    = 1000            # TF-IDF features (small-N: keep << #samples to avoid overfit)

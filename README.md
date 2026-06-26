@@ -19,10 +19,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Parameters-638K-lightgrey?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Parameters-592K-lightgrey?style=flat-square"/>
   <img src="https://img.shields.io/badge/AUC-0.73%20(dev)-brightgreen?style=flat-square"/>
-  <img src="https://img.shields.io/badge/F1--Tri--Modal-0.607-blue?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Phase-7%20of%208%20%E2%9C%85-purple?style=flat-square"/>
+  <img src="https://img.shields.io/badge/F1--Phase8-0.622-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Accuracy-70.6%25-brightgreen?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Phase-8%20of%209%20%E2%9C%85-purple?style=flat-square"/>
   <img src="https://img.shields.io/badge/Target-IEEE%20%7C%20Elsevier-red?style=flat-square"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"/>
 </p>
@@ -47,11 +48,11 @@ This research replicates that multi-channel clinical intuition in deep learning.
 
 ---
 
-## Four Novel Contributions
+## Six Novel Contributions
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         FOUR NOVEL CONTRIBUTIONS                                │
+│                          SIX NOVEL CONTRIBUTIONS                                │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │  1. CROSS-MODAL ATTENTION FUSION                                                │
@@ -82,6 +83,17 @@ This research replicates that multi-channel clinical intuition in deep learning.
 │     (b) Gradient × input saliency — maps predictions to FACS Action Units      │
 │     (c) Leave-one-modality-out AUC drop — occlusion-based importance           │
 │         When two independent methods agree, the explanation is trustworthy.     │
+│                                                                                 │
+│  5. CLINICAL-GRADE AUDIO: COVAREP + FORMANT (199-dim)                          │
+│     Replaces MFCC-only (120-dim) with MFCC + COVAREP (74 features: F0,        │
+│     NAQ, QOQ, MCEP) + FORMANT (5 vocal tract frequencies). Result:             │
+│     F1 0.607 → 0.622, Accuracy 68.8% → 70.6% on DAIC-WOZ dev.               │
+│                                                                                 │
+│  6. SYMPTOM-LEVEL MULTI-TASK + MODALITY DROPOUT                                │
+│     Joint prediction of (a) binary label, (b) PHQ-8 severity score 0-24,      │
+│     (c) 8 individual symptom items (sleep, mood, energy, concentration...).    │
+│     Modality dropout (p=0.15 per modality) forces robustness to missing        │
+│     channels — a real clinical constraint when video or audio is unavailable.  │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -202,6 +214,18 @@ Save criterion       →  best val AUC  (not accuracy — robust to imbalance)
 ---
 
 ## Results
+
+### Phase 8 — Multi-Task Fusion with Clinical Audio (DAIC-WOZ dev, N=34)
+
+| Model | Audio Features | Extra Tasks | F1 | Acc | AUC |
+|-------|:---:|:---:|:--:|:---:|:---:|
+| Random baseline | — | — | — | — | 0.50 |
+| AVEC-2017 audio baseline | MFCC | — | 0.50 | — | — |
+| Phase 4 Tri-Modal | MFCC+Δ+ΔΔ (120-dim) | binary only | 0.59 | 59.0% | 0.73 |
+| Phase 7 Tri-Modal (5-seed) | MFCC+Δ+ΔΔ (120-dim) | binary only | 0.607±0.063 | 68.8% | 0.698±0.047 |
+| **Phase 8 Multi-Task (ours)** | **MFCC+COVAREP+FORMANT (199-dim)** | **binary+score+symptoms** | **0.622** | **70.6%** | 0.663 |
+
+> **Phase 8 achieves best F1 (0.622) and best accuracy (70.6%)** across all configurations. COVAREP clinical audio features (F0, voice quality, MCEP) + FORMANT frequencies replace MFCC-only, and the model simultaneously predicts PHQ-8 severity score and 8 individual symptoms alongside the binary label.
 
 ### Phase 4 — Tri-Modal Fusion (DAIC-WOZ dev, N=34)
 
@@ -371,7 +395,8 @@ where $\hat{p}^*$ is drawn by resampling the dev set with replacement ($B = 2{,}
 | 5 | Fairness audit | 4-criterion gender equity audit | ✅ Complete |
 | 6 | Explainability | Attention rollout + gradient saliency + ablation | ✅ Complete |
 | **7** | **Ablation + SOTA** | **7 configs × 5 seeds; statistical validation; SOTA positioning** | **✅ Complete** |
-| 8 | Paper | IEEE / Elsevier submission | ⏳ |
+| **8** | **Multi-Task + COVAREP** | **Clinical audio (199-dim) + PHQ-8 score + 8-symptom heads + modality dropout** | **✅ Complete** |
+| 9 | Paper | IEEE / Elsevier submission | ⏳ |
 
 ---
 
