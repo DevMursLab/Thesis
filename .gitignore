@@ -10,7 +10,10 @@ venv/
 daicwoz/
 util/
 util.zip
-documents/
+
+# Reference PDFs in documents/ (large binary files)
+documents/*.pdf
+documents/*.m
 
 # Reference PDFs (not source code)
 *.pdf
