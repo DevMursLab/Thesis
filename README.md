@@ -215,6 +215,38 @@ Test  :  47 participants  (held out — used only for final evaluation)
 
 ---
 
+## Fairness Audit (Phase 5)
+
+Clinical screening tools have documented performance disparities across demographic
+groups. We audit the model against **four canonical group-fairness criteria** and
+report the absolute gap between male and female participants for each:
+
+```
+                   FAIRNESS CRITERIA  (gap = |Male − Female|,  fair if < 0.10)
+  ┌──────────────────────┬───────────────────────────────────┬──────────────────────┐
+  │  Criterion           │  Formal definition                │  Clinical meaning    │
+  ├──────────────────────┼───────────────────────────────────┼──────────────────────┤
+  │  Demographic Parity  │  P(Ŷ=1|M)  ≈  P(Ŷ=1|F)            │  equal flag rate     │
+  │  Equal Opportunity   │  TPR_M     ≈  TPR_F                │  equal detection of  │
+  │                      │                                   │  truly-depressed     │
+  │  Equalized Odds      │  (TPR,FPR)_M ≈ (TPR,FPR)_F        │  equal true + false  │
+  │                      │                                   │  positive rates      │
+  │  Predictive Parity   │  PPV_M     ≈  PPV_F                │  a flag means the    │
+  │                      │                                   │  same for both       │
+  └──────────────────────┴───────────────────────────────────┴──────────────────────┘
+```
+
+The audit emits per-group TPR / FPR / PPV / F1 / AUC, three publication figures
+(per-group metrics, gap bar chart, ROC-by-gender), and a structured JSON verdict.
+The training-time fairness term `λ·(TPR_M − TPR_F)²` directly optimizes the
+Equal-Opportunity gap toward zero.
+
+> **Reproduce:** `python src/fairness/fairness_analysis.py` → outputs to `results/figures/` + `results/metrics/phase5_fairness.json`
+
+*Grounded in Barocas, Hardt & Narayanan (2019) and Hardt et al. (NeurIPS 2016).*
+
+---
+
 ## Phased Roadmap
 
 | # | Phase | What | Status |
@@ -225,8 +257,8 @@ Test  :  47 participants  (held out — used only for final evaluation)
 | 3 | Audio branch | MFCC+Δ+ΔΔ + Bi-LSTM (107/34 participants) | ✅ Complete |
 | 3+ | Text branch | Transcript TF-IDF bigram encoding | ✅ Complete |
 | 4 | Tri-modal fusion | Cross-modal attention + fairness loss + Colab notebook | ✅ Complete |
-| **5** | **Fairness analysis** | **Gender-stratified evaluation + bias mitigation** | **⏳ Next** |
-| 6 | Explainability | Grad-CAM on AU sequences + attention rollout | ⏳ |
+| 5 | Fairness audit | 4-criterion gender fairness audit + Colab notebook | ✅ Complete |
+| **6** | **Explainability** | **Grad-CAM on AU sequences + attention rollout** | **⏳ Next** |
 | 7 | Ablation + SOTA | Each modality alone vs. combined; comparison table | ⏳ |
 | 8 | Paper | IEEE / Elsevier submission | ⏳ |
 
@@ -259,6 +291,9 @@ depression_thesis/
 │   │   ├── train_audio.py           ← Phase 3: audio Bi-LSTM
 │   │   └── train_fusion.py          ← Phase 4: fairness-aware tri-modal training
 │   │
+│   ├── fairness/
+│   │   └── fairness_analysis.py     ← Phase 5: 4-criterion gender fairness audit
+│   │
 │   └── explainability/
 │       └── gradcam.py               ← Grad-CAM heatmap for AU time-series
 │
@@ -266,7 +301,8 @@ depression_thesis/
 │   ├── phase1_face_cnn.ipynb        ← Colab: FER2013 emotion CNN
 │   ├── phase2_daic_faceframes.ipynb ← Colab: DAIC-WOZ face fine-tuning
 │   ├── phase3_audio_lstm.ipynb      ← Colab: MFCC Bi-LSTM training
-│   └── phase4_fusion.ipynb          ← Colab: tri-modal fusion + attention viz + fairness
+│   ├── phase4_fusion.ipynb          ← Colab: tri-modal fusion + attention viz
+│   └── phase5_fairness.ipynb        ← Colab: gender fairness audit + figures
 │
 ├── data/
 │   ├── raw/          ← fer2013.csv + daicwoz/ files  [NOT committed — see .gitignore]
