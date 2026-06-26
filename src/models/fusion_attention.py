@@ -91,17 +91,22 @@ class TriModalFusionModel(nn.Module):
         self,
         n_au: int = 20,
         n_mfcc: int = 120,
-        vocab_size: int = 10000,
-        embed_dim: int = 256,
+        vocab_size: int = 1000,
+        embed_dim: int = 64,
         num_classes: int = 2,
-        dropout: float = 0.4,
+        dropout: float = 0.6,
     ):
         super().__init__()
 
         # --- Modality encoders ---
-        self.face_enc  = FaceAUEncoder(n_au=n_au,         embed_dim=embed_dim)
-        self.audio_enc = AudioEncoder(n_mfcc=n_mfcc,      embed_dim=embed_dim)
-        self.text_enc  = TextEncoder(vocab_size=vocab_size, embed_dim=embed_dim)
+        # small-N regime: encoder hidden widths scale with embed_dim, and
+        # the text path is kept deliberately narrow (it is the easiest to overfit)
+        self.face_enc  = FaceAUEncoder(n_au=n_au,   hidden=embed_dim,
+                                       embed_dim=embed_dim, dropout=dropout/2)
+        self.audio_enc = AudioEncoder(n_mfcc=n_mfcc, hidden=embed_dim,
+                                       embed_dim=embed_dim, dropout=dropout/2)
+        self.text_enc  = TextEncoder(vocab_size=vocab_size, hidden=embed_dim,
+                                      embed_dim=embed_dim, dropout=dropout)
 
         # --- Cross-modal attention (each modality attends to the other two) ---
         self.face_attn  = CrossModalAttention(embed_dim)

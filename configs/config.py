@@ -39,7 +39,14 @@ AUDIO_TIME_STEPS = 300          # MFCC time steps per participant
 
 # ---- Text branch ----
 MAX_TEXT_LEN  = 128             # max tokens per participant transcript
-VOCAB_SIZE    = 10000           # vocabulary size
+VOCAB_SIZE    = 1000            # TF-IDF features (small-N: keep << #samples to avoid overfit)
+
+# ---- Fusion model capacity ----
+# With only ~107 training participants, a large model memorizes instantly.
+# Keep the shared embedding dim small and regularization high.
+EMBED_DIM     = 64              # shared modality embedding size
+FUSION_DROPOUT = 0.6           # heavy dropout for tiny clinical dataset
+WEIGHT_DECAY   = 1e-2          # strong L2 to combat overfitting
 
 # ---- Training ----
 BATCH_SIZE    = 32
