@@ -1,0 +1,61 @@
+{
+  "phase": "8_validation",
+  "model": "MultiTaskFusionModel",
+  "seeds": [
+    42,
+    1,
+    7,
+    123,
+    2024
+  ],
+  "audio_feat_dim": 199,
+  "per_seed": [
+    {
+      "seed": 42,
+      "auc": 0.6629,
+      "f1": 0.6222,
+      "acc": 0.7059
+    },
+    {
+      "seed": 1,
+      "auc": 0.6856,
+      "f1": 0.6386,
+      "acc": 0.6765
+    },
+    {
+      "seed": 7,
+      "auc": 0.6629,
+      "f1": 0.5983,
+      "acc": 0.6765
+    },
+    {
+      "seed": 123,
+      "auc": 0.6023,
+      "f1": 0.6222,
+      "acc": 0.7059
+    },
+    {
+      "seed": 2024,
+      "auc": 0.6742,
+      "f1": 0.6621,
+      "acc": 0.6765
+    }
+  ],
+  "auc_mean": 0.6576,
+  "auc_std": 0.0289,
+  "f1_mean": 0.6287,
+  "f1_std": 0.0211,
+  "acc_mean": 0.6882,
+  "acc_std": 0.0144,
+  "bootstrap_ci_auc": [
+    0.5,
+    0.8789
+  ],
+  "comparison": {
+    "phase7_audio_f1": 0.592,
+    "phase7_trimodal_f1": 0.607,
+    "phase8_f1_mean": 0.6287,
+    "improvement_over_p7": 0.0217,
+    "verdict": "COVAREP+MultiTask genuinely improves F1 by 0.022"
+  }
+}

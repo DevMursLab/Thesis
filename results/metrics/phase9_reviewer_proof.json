@@ -1,0 +1,94 @@
+{
+  "phase": 9,
+  "experiments": {
+    "fairness_before_after": {
+      "no_fairness_runs": [
+        {
+          "seed": 42,
+          "tpr_gap": 0.1143,
+          "f1": 0.6471
+        },
+        {
+          "seed": 1,
+          "tpr_gap": 0.0857,
+          "f1": 0.7786
+        },
+        {
+          "seed": 7,
+          "tpr_gap": 0.3714,
+          "f1": 0.6458
+        }
+      ],
+      "with_fairness_runs": [
+        {
+          "seed": 42,
+          "tpr_gap": 0.1714,
+          "f1": 0.69
+        },
+        {
+          "seed": 1,
+          "tpr_gap": 0.2286,
+          "f1": 0.7424
+        },
+        {
+          "seed": 7,
+          "tpr_gap": 0.2286,
+          "f1": 0.6471
+        }
+      ],
+      "mean_tpr_gap_no_fairness": 0.1905,
+      "mean_tpr_gap_with_fairness": 0.2095,
+      "gap_reduction": -0.0191,
+      "mean_f1_no_fairness": 0.6905,
+      "mean_f1_with_fairness": 0.6932,
+      "f1_cost": 0.0027
+    },
+    "attention_vs_concat": {
+      "attention_runs": [
+        {
+          "seed": 42,
+          "auc": 0.5985,
+          "f1": 0.6471
+        },
+        {
+          "seed": 1,
+          "auc": 0.7235,
+          "f1": 0.7786
+        },
+        {
+          "seed": 7,
+          "auc": 0.7273,
+          "f1": 0.6458
+        }
+      ],
+      "concat_runs": [
+        {
+          "seed": 42,
+          "auc": 0.6326,
+          "f1": 0.6886
+        },
+        {
+          "seed": 1,
+          "auc": 0.6591,
+          "f1": 0.5968
+        },
+        {
+          "seed": 7,
+          "auc": 0.7045,
+          "f1": 0.664
+        }
+      ],
+      "attention_f1": 0.6905,
+      "concat_f1": 0.6498,
+      "attention_auc": 0.6831,
+      "concat_auc": 0.6654,
+      "attention_gain_f1": 0.0407,
+      "attention_gain_auc": 0.0177
+    }
+  },
+  "seeds": [
+    42,
+    1,
+    7
+  ]
+}

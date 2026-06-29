@@ -1,0 +1,148 @@
+{
+  "phase": 7,
+  "analysis": "Ablation + statistical validation + SOTA positioning",
+  "protocol": {
+    "seeds": [
+      42,
+      1,
+      7,
+      123,
+      2024
+    ],
+    "bootstrap_resamples": 2000,
+    "dev_n": 34
+  },
+  "configurations": {
+    "face": {
+      "auc_mean": 0.5129,
+      "auc_std": 0.1129,
+      "auc_ci95": [
+        0.2454,
+        0.6912
+      ],
+      "f1_mean": 0.5255,
+      "f1_std": 0.0075,
+      "acc_mean": 0.3824,
+      "threshold": 0.1
+    },
+    "audio": {
+      "auc_mean": 0.7212,
+      "auc_std": 0.0133,
+      "auc_ci95": [
+        0.5414,
+        0.899
+      ],
+      "f1_mean": 0.5925,
+      "f1_std": 0.0284,
+      "acc_mean": 0.6765,
+      "threshold": 0.42500000000000004
+    },
+    "text": {
+      "auc_mean": 0.5614,
+      "auc_std": 0.0431,
+      "auc_ci95": [
+        0.3792,
+        0.7895
+      ],
+      "f1_mean": 0.5392,
+      "f1_std": 0.0182,
+      "acc_mean": 0.4588,
+      "threshold": 0.375
+    },
+    "face+audio": {
+      "auc_mean": 0.7121,
+      "auc_std": 0.0276,
+      "auc_ci95": [
+        0.48,
+        0.8834
+      ],
+      "f1_mean": 0.5626,
+      "f1_std": 0.0414,
+      "acc_mean": 0.6118,
+      "threshold": 0.225
+    },
+    "face+text": {
+      "auc_mean": 0.6667,
+      "auc_std": 0.069,
+      "auc_ci95": [
+        0.6363,
+        0.9451
+      ],
+      "f1_mean": 0.57,
+      "f1_std": 0.0625,
+      "acc_mean": 0.6059,
+      "threshold": 0.325
+    },
+    "audio+text": {
+      "auc_mean": 0.6644,
+      "auc_std": 0.0566,
+      "auc_ci95": [
+        0.4167,
+        0.8311
+      ],
+      "f1_mean": 0.4369,
+      "f1_std": 0.1143,
+      "acc_mean": 0.5882,
+      "threshold": 0.1
+    },
+    "face+audio+text": {
+      "auc_mean": 0.6985,
+      "auc_std": 0.0466,
+      "auc_ci95": [
+        0.4488,
+        0.8625
+      ],
+      "f1_mean": 0.6066,
+      "f1_std": 0.0628,
+      "acc_mean": 0.6882,
+      "threshold": 0.125
+    }
+  },
+  "statistical_test": {
+    "method": "multi-seed paired comparison + bootstrap (2000 resamples)",
+    "tri_modal_auc_mean": 0.6985,
+    "best_unimodal": "audio",
+    "best_unimodal_auc_mean": 0.7212,
+    "per_seed_mean_gain": -0.0227,
+    "seeds_trimodal_wins": "2/5",
+    "bootstrap_p_value": 0.8585,
+    "significant_at_0.05": false
+  },
+  "error_analysis": {
+    "hard_cases_wrong_in_all": 1,
+    "rescued_by_trimodal": 5,
+    "dev_n": 34
+  },
+  "sota_positioning": [
+    {
+      "method": "AVEC-2017 audio baseline (Ringeval+ 2017)",
+      "modalities": "Audio",
+      "f1": 0.5
+    },
+    {
+      "method": "AVEC-2017 text baseline (Ringeval+ 2017)",
+      "modalities": "Text",
+      "f1": 0.49
+    },
+    {
+      "method": "Gong & Poellabauer (2017), topic-modeling",
+      "modalities": "A+V+T",
+      "f1": 0.7
+    },
+    {
+      "method": "Williamson+ (2016), multimodal",
+      "modalities": "A+V",
+      "f1": 0.57
+    },
+    {
+      "method": "THIS WORK (tri-modal cross-attention)",
+      "modalities": "A+V+T",
+      "f1": 0.6066
+    }
+  ],
+  "references": [
+    "Ringeval et al., AVEC 2017 Workshop",
+    "Gong & Poellabauer, Topic Modeling DAIC-WOZ, AVEC 2017",
+    "Williamson et al., Multimodal Depression Detection, AVEC 2016"
+  ]
+}

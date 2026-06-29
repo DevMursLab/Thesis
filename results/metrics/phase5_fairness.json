@@ -1,0 +1,64 @@
+{
+  "phase": 5,
+  "analysis": "Algorithmic Fairness Audit (gender)",
+  "protected_attribute": "gender",
+  "fairness_threshold": 0.1,
+  "decision_threshold": 0.325,
+  "per_group": {
+    "Male": {
+      "n": 18,
+      "n_depressed": 7,
+      "accuracy": 0.5556,
+      "f1": 0.5556,
+      "precision": 0.4545,
+      "recall": 0.7143,
+      "auc": 0.7013,
+      "TPR": 0.7143,
+      "FPR": 0.5455,
+      "PPV": 0.4545,
+      "selection_rate": 0.6111,
+      "tn": 5,
+      "fp": 6,
+      "fn": 2,
+      "tp": 5
+    },
+    "Female": {
+      "n": 16,
+      "n_depressed": 5,
+      "accuracy": 0.625,
+      "f1": 0.625,
+      "precision": 0.4545,
+      "recall": 1.0,
+      "auc": 0.7636,
+      "TPR": 1.0,
+      "FPR": 0.5455,
+      "PPV": 0.4545,
+      "selection_rate": 0.6875,
+      "tn": 5,
+      "fp": 6,
+      "fn": 0,
+      "tp": 5
+    }
+  },
+  "gaps": {
+    "demographic_parity_gap": 0.0764,
+    "equal_opportunity_gap": 0.2857,
+    "equalized_odds_gap": 0.2857,
+    "predictive_parity_gap": 0.0,
+    "f1_gap": 0.0694,
+    "accuracy_gap": 0.0694
+  },
+  "verdict": {
+    "demographic_parity_gap": "FAIR",
+    "equal_opportunity_gap": "BIASED",
+    "equalized_odds_gap": "BIASED",
+    "predictive_parity_gap": "FAIR",
+    "f1_gap": "FAIR",
+    "accuracy_gap": "FAIR"
+  },
+  "criteria_passed": "4/6",
+  "references": [
+    "Barocas, Hardt & Narayanan, Fairness and Machine Learning, 2019",
+    "Hardt et al., Equality of Opportunity in Supervised Learning, NeurIPS 2016"
+  ]
+}

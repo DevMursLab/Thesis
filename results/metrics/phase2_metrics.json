@@ -1,0 +1,9 @@
+{
+  "phase": 2,
+  "dataset": "DAIC-WOZ (face frames)",
+  "transfer_from": "scratch",
+  "epochs_run": 3,
+  "best_dev_f1": 0.0,
+  "final_dev_auc": 0.4837092731829574,
+  "final_dev_acc": 47.5
+}

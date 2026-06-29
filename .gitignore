@@ -34,6 +34,9 @@ results/figures/*
 results/metrics/*
 !results/figures/.gitkeep
 !results/metrics/.gitkeep
+# Track publication figures and validated metrics (final outputs for paper)
+!results/figures/fig*.png
+!results/metrics/phase*.json
 
 # Jupyter
 .ipynb_checkpoints/

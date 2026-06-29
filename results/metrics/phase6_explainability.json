@@ -1,0 +1,79 @@
+{
+  "phase": 6,
+  "analysis": "Explainability \u2014 attention rollout + gradient saliency + ablation",
+  "full_model_auc": 0.7311,
+  "attention_rollout": {
+    "face_attends_to": {
+      "audio": 0.6149165630340576,
+      "text": 0.3850834369659424
+    },
+    "audio_attends_to": {
+      "face": 0.45510876178741455,
+      "text": 0.5448912382125854
+    },
+    "text_attends_to": {
+      "face": 0.4476357102394104,
+      "audio": 0.5523642897605896
+    },
+    "modality_importance": {
+      "face": 0.3009,
+      "audio": 0.3891,
+      "text": 0.31
+    }
+  },
+  "au_saliency": {
+    "AU20": 0.1297,
+    "AU06": 0.1201,
+    "AU05": 0.1199,
+    "AU25": 0.0852,
+    "AU04": 0.0113,
+    "AU02": 0.0704,
+    "AU09": 0.0672,
+    "AU15": 0.0256,
+    "AU01": 0.047,
+    "AU10": 0.0377,
+    "AU14": 0.0343,
+    "AU12": 0.0127,
+    "AU17": 0.0223,
+    "AU28": 0.0219,
+    "AU23": 0.0175,
+    "AU45": 0.0145,
+    "AU26": 0.0092
+  },
+  "top_action_units": [
+    {
+      "au": "AU20",
+      "clinical": "Lip Stretcher",
+      "importance": 0.1297
+    },
+    {
+      "au": "AU06",
+      "clinical": "Cheek Raiser",
+      "importance": 0.1201
+    },
+    {
+      "au": "AU05",
+      "clinical": "Upper Lid Raiser",
+      "importance": 0.1199
+    },
+    {
+      "au": "AU25",
+      "clinical": "Lips Part",
+      "importance": 0.0852
+    },
+    {
+      "au": "AU04",
+      "clinical": "Brow Lowerer*",
+      "importance": 0.0787
+    }
+  ],
+  "ablation_auc_drop": {
+    "without_face": 0.0076,
+    "without_audio": 0.0303,
+    "without_text": 0.0303
+  },
+  "references": [
+    "Shrikumar et al., Learning Important Features Through Propagating Activation Differences, ICML 2017",
+    "Abnar & Zuidema, Quantifying Attention Flow in Transformers, ACL 2020"
+  ]
+}

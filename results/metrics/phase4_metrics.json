@@ -1,0 +1,20 @@
+{
+  "phase": 4,
+  "model": "TriModalFusionModel (Cross-Modal Attention)",
+  "modalities": [
+    "CLNF_AUs",
+    "MFCC+delta+delta2",
+    "TF-IDF_bigrams"
+  ],
+  "dataset": "DAIC-WOZ (USC)",
+  "fairness_loss": true,
+  "fairness_lambda": 0.1,
+  "best_dev_auc": 0.7310606060606061,
+  "best_dev_f1": 0.5882352941176471,
+  "decision_threshold": 0.325,
+  "final_dev_auc": 0.7310606060606061,
+  "final_dev_acc": 58.82352941176471,
+  "f1_male": 0.5555555555555556,
+  "f1_female": 0.625,
+  "fairness_gap": 0.06944444444444442
+}
