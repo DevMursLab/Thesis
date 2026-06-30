@@ -77,10 +77,16 @@ system achieves macro-F1\,$=0.629\pm0.021$ and AUC\,$=0.658\pm0.029$,
 a statistically validated improvement of $+0.022$ F1 over our
 Phase\,7 baseline ($0.607\pm0.063$), outperforming the AVEC-2017
 audio baseline (F1\,=\,0.50) and two other published DAIC-WOZ methods.
-Reviewer-proof experiments confirm: (1)~cross-modal attention
-yields F1\,$+0.041$ over plain concatenation under controlled conditions;
-(2)~the Equalized Odds loss reduces worst-case TPR disparity by 38\%
-and bias variance by 78\% across seeds. Three converging explainability
+Reviewer-proof experiments (10~seeds each) confirm: (1)~cross-modal
+attention achieves F1\,$=0.668\!\pm\!0.050$ vs.\ concat
+$0.644\!\pm\!0.033$ ($\Delta=+0.024$), winning 6/10~seeds on AUC,
+though the difference does not reach statistical significance at
+$N{=}34$ (Wilcoxon $p{=}0.496$); (2)~the Equalized Odds fairness loss
+yields a negative result on this sample size---mean TPR gap
+$0.311\!\pm\!0.233$ (with) vs.\ $0.320\!\pm\!0.191$ (without,
+Wilcoxon $p{=}0.813$)---we report this transparently as an important
+finding on the limits of bias mitigation at small scale.
+Three converging explainability
 methods (attention rollout, gradient\,$\times$\,input saliency,
 occlusion ablation) independently rank audio and AU04 (Brow Lowerer)
 as primary cues---consistent with established clinical knowledge
@@ -132,8 +138,11 @@ This paper closes all three gaps through six novel contributions:
 
   \item \textbf{Equalized Odds fairness loss:} We extend
   Equal-Opportunity to Equalized Odds by penalizing both TPR and FPR
-  gender gaps jointly, preventing all-positive collapse. Empirically
-  validated: worst-case TPR gap reduced 38\%; bias variance reduced 78\%.
+  gender gaps jointly, preventing all-positive collapse. A 10-seed
+  paired evaluation (Wilcoxon $p{=}0.813$) reveals the loss is
+  insufficient for significant gap reduction at $N{=}34$---we report
+  this as a negative result highlighting the open challenge of
+  bias mitigation on small clinical datasets.
 
   \item \textbf{Clinical-grade audio (199-dim):}
   MFCC+$\Delta$+$\Delta^2$ augmented with COVAREP voice quality
@@ -543,56 +552,55 @@ with controlled evidence, we implement \texttt{ConcatFusionModel}:
 identical encoders, identical classifier, but the fusion step replaces
 Eq.~\eqref{eq:attention}--\eqref{eq:residual} with
 $\mathbf{z}=[\mathbf{h}_f\|\mathbf{h}_a\|\mathbf{h}_t]$.
-Both systems are trained under identical hyperparameters over seeds
-$\{42,1,7\}$ (Table~\ref{tab:attn_concat}, Fig.~\ref{fig:attn_concat}).
+Both systems are trained under identical hyperparameters over
+\textbf{10 random seeds} $\{42,1,7,13,21,100,2024,7777,555,88\}$
+(Table~\ref{tab:attn_concat}, Fig.~\ref{fig:attn_concat}).
 
 \begin{table}[t]
 \centering
 \renewcommand{\arraystretch}{1.15}
-\caption{Cross-Modal Attention vs.\ Plain Concatenation (3~seeds)}
+\caption{Cross-Modal Attention vs.\ Plain Concatenation (10~seeds, paired Wilcoxon test)}
 \label{tab:attn_concat}
-\begin{tabular}{lcccccc}
+\begin{tabular}{lcccc}
 \toprule
-& \multicolumn{2}{c}{\textbf{Seed 42}}
-& \multicolumn{2}{c}{\textbf{Seed 1}}
-& \multicolumn{2}{c}{\textbf{Seed 7}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-\textbf{Fusion} & AUC & F1 & AUC & F1 & AUC & F1 \\
+\textbf{Fusion} & \textbf{Mean F1} & \textbf{Mean AUC}
+  & \textbf{F1 wins} & \textbf{AUC wins} \\
 \midrule
-Cross-Modal Attn & 0.598 & 0.647 & 0.723 & 0.779 & 0.727 & 0.646 \\
-Plain Concat     & 0.633 & 0.689 & 0.659 & 0.597 & 0.705 & 0.664 \\
+Cross-Modal Attention & $0.668\pm0.050$ & $0.667\pm0.064$
+  & 4/10 & \textbf{6/10} \\
+Plain Concatenation   & $0.644\pm0.033$ & $0.655\pm0.046$
+  & \textbf{5/10} & 4/10 \\
 \midrule
-\textbf{Mean (3 seeds)} &
-  \multicolumn{2}{c}{Attn: F1=\textbf{0.691}} &
-  \multicolumn{2}{c}{AUC=\textbf{0.683}} &
-  \multicolumn{2}{c}{} \\
-&
-  \multicolumn{2}{c}{Concat: F1=0.650} &
-  \multicolumn{2}{c}{AUC=0.665} &
-  \multicolumn{2}{c}{} \\
-\midrule
-$\Delta$ Attention Gain &
-  \multicolumn{2}{c}{F1 \textbf{+0.041}} &
-  \multicolumn{2}{c}{AUC \textbf{+0.018}} &
-  \multicolumn{2}{c}{} \\
+$\Delta$ (Attn $-$ Concat) & $+0.024$ & $+0.012$ & & \\
+Wilcoxon $p$ & 0.496 & 0.647 & \multicolumn{2}{c}{n.s.\ at $\alpha{=}0.05$} \\
 \bottomrule
+\multicolumn{5}{l}{\scriptsize 1 tie in F1. n.s. = not significant.} \\
 \end{tabular}
 \end{table}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig8_attention_vs_concat.png}
-  \caption{Cross-modal attention vs.\ plain concatenation (3~seeds,
-    identical encoders/classifier). Attention: F1\,$+0.041$,
-    AUC\,$+0.018$ over concat.}
+  \caption{Cross-modal attention vs.\ plain concatenation (10~seeds,
+    identical encoders/classifier). Attention achieves higher mean F1
+    (+0.024) and higher mean AUC (+0.012), winning 6/10~seeds on AUC,
+    but neither difference is statistically significant
+    (Wilcoxon $p{=}0.496$/$0.647$, $N{=}34$).}
   \label{fig:attn_concat}
 \end{figure}
 
-Cross-modal attention achieves F1~$=0.691$ vs.\ concat F1~$=0.650$
-($\Delta=+0.041$) and AUC~$=0.683$ vs.\ $0.665$ ($\Delta=+0.018$).
-The attention advantage is consistent on mean F1 across all three seeds,
-demonstrating that the attention mechanism provides measurable benefit
-over simple feature concatenation on clinical interview data.
+Cross-modal attention achieves mean F1\,$=0.668\pm0.050$ vs.\
+concat $0.644\pm0.033$ ($\Delta=+0.024$) and mean AUC\,$=0.667$
+vs.\ $0.655$ ($\Delta=+0.012$). Attention wins 6/10~seeds on AUC.
+However, neither difference reaches statistical significance
+(Wilcoxon signed-rank $p{=}0.496$ for F1; $p{=}0.647$ for AUC, $n{=}10$
+paired seeds), due to high seed variance on the small dev set
+($N{=}34$). We retain cross-modal attention as the default fusion
+mechanism for two reasons: (1)~a consistent positive trend in both
+metrics across 10~seeds, and (2)~the interpretability benefit of
+attention weights for clinical auditing, which concatenation does not
+provide. Definitive superiority claims require evaluation on the
+held-out test set ($N{=}47$).
 
 % ============================================================
 \section{Comparison with Published Methods}
@@ -682,50 +690,56 @@ a \emph{clinically necessary} design choice.
 
 \subsection{Fairness Loss Effectiveness}
 
-To empirically validate $\mathcal{L}_\text{fair}$, we train with
-$\lambda_f=0$ (no fairness) versus $\lambda_f=0.1$ over three seeds
-$\{42,1,7\}$ (Table~\ref{tab:fairness_exp}, Fig.~\ref{fig:fairness_ba}).
+To empirically evaluate $\mathcal{L}_\text{fair}$, we train with
+$\lambda_f=0$ (no fairness) versus $\lambda_f=0.1$ over \textbf{10 seeds}
+$\{42,1,7,13,21,100,2024,7777,555,88\}$
+(Table~\ref{tab:fairness_exp}, Fig.~\ref{fig:fairness_ba}).
 
 \begin{table}[t]
 \centering
 \renewcommand{\arraystretch}{1.15}
-\caption{Equalized Odds Loss Effectiveness: Per-Seed TPR Gap}
+\caption{Equalized Odds Loss: 10-Seed Paired Analysis}
 \label{tab:fairness_exp}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Condition} & \textbf{Seed 42} & \textbf{Seed 1}
-  & \textbf{Seed 7} & \textbf{Mean$\pm$Std} \\
+\textbf{Condition} & \textbf{Mean TPR Gap} & \textbf{Wins}
+  & \textbf{F1} & \textbf{Wilcoxon $p$} \\
 \midrule
-No fairness ($\lambda_f{=}0$)   & 0.114 & 0.086 & 0.371
-  & $0.190\pm0.148$ \\
-With fairness ($\lambda_f{=}0.1$) & 0.171 & 0.229 & 0.229
-  & $0.210\pm0.033$ \\
+No fairness ($\lambda_f{=}0$)     & $0.320\pm0.191$ & 4/10 & $0.668\pm0.050$ & \multirow{2}{*}{0.813} \\
+With fairness ($\lambda_f{=}0.1$) & $0.311\pm0.233$ & 3/10 & $0.667\pm0.052$ & \\
 \midrule
-Change & & & Worst: $-0.142$ & Std: $-0.115$ \\
+$\Delta$ (with $-$ without) & $-0.009$ & \multicolumn{2}{c}{3 ties} & n.s. \\
 \bottomrule
+\multicolumn{5}{l}{\scriptsize n.s. = not significant at $\alpha{=}0.05$. F1 cost: $-0.001$.} \\
 \end{tabular}
 \end{table}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig7_fairness_before_after.png}
-  \caption{Per-seed TPR gap with/without Equalized Odds loss.
-    Worst-case reduced 38\% (0.371$\!\to\!$0.229);
-    std collapsed 78\% (0.148$\!\to\!$0.033).}
+  \caption{Per-seed TPR gap with/without Equalized Odds loss (10~seeds).
+    Mean gap: $0.311$ (with) vs.\ $0.320$ (without); Wilcoxon $p{=}0.813$.
+    The fairness loss fails to significantly reduce bias at $N{=}34$.}
   \label{fig:fairness_ba}
 \end{figure}
 
-The key finding is \emph{not} the mean gap change ($+0.020$, negligible)
-but the \emph{variance collapse}: standard deviation shrinks from~0.148
-to~0.033 ($-78\%$) and the worst-case gap drops from~0.371 to~0.229
-($-38\%$). Without the fairness loss, one seed produces nearly
-$4\times$ the bias of another; with $\mathcal{L}_\text{fair}$, the
-worst-case gap is bounded below~0.230 across all seeds. F1 cost is
-negligible ($+0.003$). We interpret this as: the Equalized Odds loss
-does not guarantee mean gap reduction at $N{=}34$ (insufficient
-statistical power), but it \emph{reliably prevents catastrophic
-fairness failures}---the clinically critical property absent from
-unconstrained training.
+\textbf{Negative result:} The 10-seed paired analysis reveals that
+$\mathcal{L}_\text{fair}$ does \emph{not} significantly reduce the
+TPR gap at this sample size (Wilcoxon $p{=}0.813$). Fairness wins 3/10
+seeds, the baseline wins 4/10, with 3~ties. The worst-case TPR gap
+\emph{increased} in the high-variance seed
+(no-fairness $0.714$ $\to$ with-fairness $0.857$), counter to the
+intended effect. The F1 cost is negligible ($-0.001$).
+
+We report this negative result transparently: bias mitigation via a
+differentiable surrogate loss is insufficient at $N{=}34$, where
+the gender-stratified subgroups contain as few as 5~participants.
+This finding aligns with the theoretical result of \cite{barocas2019}
+that fairness constraints require adequate representation in both
+groups to converge reliably. The Equalized Odds loss remains in our
+framework as a principled design choice and may become effective with
+larger clinical datasets or balanced gender splits---but we make no
+claim of empirical effectiveness at the current scale.
 
 % ============================================================
 \section{Explainability}
@@ -791,7 +805,9 @@ First, multimodal coverage: ablation confirms that tri-modal fusion
 rescues cases that audio-only misclassifies, matching the multi-channel
 nature of clinical observation. Second, training-time fairness: the
 Equalized Odds loss is integrated into the objective function---not
-applied post-hoc---making fairness a first-class design constraint.
+applied post-hoc---making fairness a first-class design constraint,
+though our 10-seed evaluation shows it is insufficient for significant
+bias reduction at $N{=}34$, motivating larger-scale replication.
 Third, convergent interpretability: three independent XAI methods
 map model decisions to established clinical indicators (AU04, audio
 pitch), providing an evidence chain that a clinician can audit.
@@ -801,21 +817,27 @@ pitch), providing an evidence chain that a clinician can audit.
 \label{sec:conclusion}
 
 We presented a tri-modal depression risk detection framework on
-DAIC-WOZ incorporating six novel components: cross-modal attention
-fusion (empirically validated over concatenation: F1~$+0.041$),
-Equalized Odds fairness training (worst-case bias~$-38\%$,
-variance~$-78\%$), clinical-grade COVAREP audio (199-dim), symptom-level
-PHQ-8 multi-task learning, modality dropout ($p{=}0.15$), and
-convergent explainability. A controlled ablation study
+DAIC-WOZ incorporating six components: cross-modal attention fusion,
+Equalized Odds fairness training, clinical-grade COVAREP audio
+(199-dim), symptom-level PHQ-8 multi-task learning, modality dropout
+($p{=}0.15$), and convergent explainability. A controlled ablation
 (7~configurations\,$\times$\,5~seeds\,=\,35~runs, bootstrap~CI,
 paired bootstrap significance) provides statistically grounded
-evidence for each design decision. The system achieves
+evidence for each modality contribution. The system achieves
 F1~$=0.629\pm0.021$ (5-seed mean) and accuracy~$=68.8\%$ on the
-DAIC-WOZ dev split, outperforming three published baselines while
-adding fairness, interpretability, and robustness absent from all
-compared methods. Future work includes GPU training on the full
-participant set, AVEC~2017 challenge test-set submission, and
-BERT-based text encoding.
+DAIC-WOZ dev split, outperforming three published baselines.
+
+Two 10-seed reviewer-proof experiments (Wilcoxon signed-rank) yield
+important nuanced findings: (1)~cross-modal attention shows a
+consistent positive trend over concatenation (F1\,$+0.024$,
+AUC wins 6/10~seeds) but does not reach statistical significance at
+$N{=}34$ ($p{=}0.496$); (2)~the Equalized Odds loss is insufficient
+for bias reduction at this sample size ($p{=}0.813$, wins 3/10~seeds),
+a negative result we report transparently as evidence that fairness
+constraints require larger gender-balanced cohorts to converge
+reliably. Future work should target AVEC~2017 test-set submission
+($N{=}47$), GPU training, BERT text encoding, and replication on
+larger depression corpora such as E-DAIC.
 
 % ============================================================
 \section*{Acknowledgment}

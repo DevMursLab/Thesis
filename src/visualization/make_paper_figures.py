@@ -253,77 +253,88 @@ def fig_fairness_radar():
 
 
 def fig_fairness_before_after():
-    """Fig 7 — Fairness loss: per-seed TPR gap before vs after."""
-    seeds = [42, 1, 7]
-    no_fair  = [0.114, 0.086, 0.371]
-    with_fair = [0.171, 0.229, 0.229]
+    """Fig 7 — Fairness loss: per-seed TPR gap before vs after (10 seeds)."""
+    seeds     = [42, 1, 7, 13, 21, 100, 2024, 7777, 555, 88]
+    no_fair   = [0.114, 0.086, 0.371, 0.371, 0.371, 0.714, 0.171, 0.514, 0.371, 0.114]
+    with_fair = [0.171, 0.229, 0.229, 0.371, 0.171, 0.857, 0.029, 0.571, 0.371, 0.114]
 
     x = np.arange(len(seeds))
     w = 0.35
 
-    fig, ax = plt.subplots(figsize=(6.5, 4))
+    fig, ax = plt.subplots(figsize=(10, 4.5))
     b1 = ax.bar(x - w/2, no_fair,  w, label="Without Fairness Loss (λ=0)",
                 color=NAVY,  alpha=0.85, edgecolor="black", linewidth=0.8)
     b2 = ax.bar(x + w/2, with_fair, w, label="With Equalized-Odds Loss (λ=0.1)",
                 color=CORAL, alpha=0.85, edgecolor="black", linewidth=0.8)
 
     ax.set_xticks(x)
-    ax.set_xticklabels([f"Seed {s}" for s in seeds])
+    ax.set_xticklabels([f"S{s}" for s in seeds], fontsize=8)
     ax.set_ylabel("TPR Gap  |TPR_male − TPR_female|")
-    ax.set_ylim(0, 0.42)
-    ax.set_title("Fig. 7.  Equalized-Odds Loss Stabilizes Gender Fairness\n"
-                 "(worst-case gap: 0.371→0.229, −38%;  std: 0.148→0.033, −78%)")
+    ax.set_ylim(0, 1.00)
+    mn_no  = np.mean(no_fair)
+    mn_wi  = np.mean(with_fair)
+    ax.set_title(
+        f"Fig. 7.  Equalized-Odds Loss: Mixed Results over 10 Seeds\n"
+        f"(mean gap: {mn_wi:.3f}±{np.std(with_fair):.3f} vs "
+        f"{mn_no:.3f}±{np.std(no_fair):.3f},  Wilcoxon p=0.813,  wins: fair=3, base=4, ties=3)",
+        fontsize=9
+    )
     for b, v in [(b1, no_fair), (b2, with_fair)]:
         for bar, val in zip(b, v):
-            ax.text(bar.get_x() + bar.get_width()/2, val + 0.008,
-                    f"{val:.3f}", ha="center", fontsize=8)
+            ax.text(bar.get_x() + bar.get_width()/2, val + 0.012,
+                    f"{val:.2f}", ha="center", fontsize=6.5)
 
-    ax.axhline(np.mean(no_fair),  ls="--", lw=1.2, color=NAVY,  alpha=0.6,
-               label=f"Mean without: {np.mean(no_fair):.3f}")
-    ax.axhline(np.mean(with_fair), ls="--", lw=1.2, color=CORAL, alpha=0.6,
-               label=f"Mean with: {np.mean(with_fair):.3f}")
+    ax.axhline(mn_no,  ls="--", lw=1.2, color=NAVY,  alpha=0.6,
+               label=f"Mean without: {mn_no:.3f}")
+    ax.axhline(mn_wi, ls="--", lw=1.2, color=CORAL, alpha=0.6,
+               label=f"Mean with: {mn_wi:.3f}")
     ax.legend(fontsize=7.5, loc="upper left")
+    plt.tight_layout()
     plt.savefig(FIGURES / "fig7_fairness_before_after.png")
     plt.close()
     print("  fig7_fairness_before_after.png")
 
 
 def fig_attention_vs_concat():
-    """Fig 8 — Cross-modal attention vs plain concatenation."""
-    seeds = [42, 1, 7]
-    attn_f1  = [0.647, 0.779, 0.646]
-    concat_f1 = [0.689, 0.597, 0.664]
-    attn_auc  = [0.598, 0.723, 0.727]
-    concat_auc = [0.633, 0.659, 0.705]
+    """Fig 8 — Cross-modal attention vs plain concatenation (10 seeds)."""
+    seeds      = [42, 1, 7, 13, 21, 100, 2024, 7777, 555, 88]
+    attn_f1    = [0.647, 0.779, 0.646, 0.646, 0.621, 0.646, 0.690, 0.690, 0.597, 0.715]
+    concat_f1  = [0.689, 0.597, 0.664, 0.678, 0.647, 0.652, 0.598, 0.652, 0.597, 0.664]
+    attn_auc   = [0.598, 0.723, 0.727, 0.564, 0.746, 0.648, 0.686, 0.674, 0.576, 0.723]
+    concat_auc = [0.633, 0.659, 0.705, 0.674, 0.716, 0.678, 0.583, 0.686, 0.568, 0.644]
 
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
     x = np.arange(len(seeds)); w = 0.35
 
-    for ax, attn_v, concat_v, metric, ylo, ylabel in [
-        (axes[0], attn_f1,  concat_f1,  "Macro-F1",  0.50, "Macro-F1"),
-        (axes[1], attn_auc, concat_auc, "AUC-ROC",   0.55, "AUC-ROC"),
+    for ax, attn_v, concat_v, ylabel, p_val, wins in [
+        (axes[0], attn_f1,  concat_f1,  "Macro-F1", "0.496", "attn=4, concat=5, ties=1"),
+        (axes[1], attn_auc, concat_auc, "AUC-ROC",  "0.647", "attn=6, concat=4"),
     ]:
         b1 = ax.bar(x - w/2, attn_v,   w, label="Cross-Modal Attention",
                     color=PURPLE, alpha=0.85, edgecolor="black", linewidth=0.8)
         b2 = ax.bar(x + w/2, concat_v, w, label="Plain Concatenation",
                     color=GOLD,   alpha=0.85, edgecolor="black", linewidth=0.8)
         ax.set_xticks(x)
-        ax.set_xticklabels([f"Seed {s}" for s in seeds])
+        ax.set_xticklabels([f"S{s}" for s in seeds], fontsize=7.5)
         ax.set_ylabel(ylabel)
-        ax.set_ylim(ylo, max(max(attn_v), max(concat_v)) + 0.07)
+        ax.set_ylim(0.50, max(max(attn_v), max(concat_v)) + 0.08)
         mn_a = np.mean(attn_v); mn_c = np.mean(concat_v)
         ax.axhline(mn_a, ls="--", lw=1.2, color=PURPLE, alpha=0.6,
                    label=f"Attn mean: {mn_a:.3f}")
         ax.axhline(mn_c, ls="--", lw=1.2, color=GOLD, alpha=0.6,
                    label=f"Concat mean: {mn_c:.3f}")
+        ax.set_title(f"Wilcoxon p={p_val}  (n=10 seeds)  |  wins: {wins}", fontsize=8)
         ax.legend(fontsize=7, loc="lower right")
         for b, vs in [(b1, attn_v), (b2, concat_v)]:
             for bar, v in zip(b, vs):
                 ax.text(bar.get_x() + bar.get_width()/2, v + 0.006,
-                        f"{v:.3f}", ha="center", fontsize=7.5)
+                        f"{v:.3f}", ha="center", fontsize=6.5)
 
-    fig.suptitle("Fig. 8.  Cross-Modal Attention vs. Concatenation\n"
-                 "(Attention: F1 +0.041, AUC +0.018 over concat)", fontsize=10, weight="bold")
+    fig.suptitle(
+        "Fig. 8.  Cross-Modal Attention vs. Concatenation  (10 seeds, identical encoders/classifier)\n"
+        "Attn: F1=0.668±0.050, AUC=0.667±0.064  |  Concat: F1=0.644±0.033, AUC=0.655±0.046  |  Neither difference significant",
+        fontsize=9, weight="bold"
+    )
     plt.tight_layout()
     plt.savefig(FIGURES / "fig8_attention_vs_concat.png")
     plt.close()

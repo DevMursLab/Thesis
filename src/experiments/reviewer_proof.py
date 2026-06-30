@@ -32,6 +32,7 @@ import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import f1_score, roc_auc_score
 from sklearn.utils.class_weight import compute_class_weight
+from scipy.stats import wilcoxon
 
 from configs.config import (
     DATA_PROCESSED, VOCAB_SIZE, N_AU_FEATURES, EMBED_DIM,
@@ -46,7 +47,7 @@ AUDIO_OUT = DATA_PROCESSED / "daic_audio_covarep"
 TEXT_OUT  = DATA_PROCESSED / "daic_text"
 METRICS_P = Path("results") / "metrics" / "phase9_reviewer_proof.json"
 
-SEEDS    = [42, 1, 7]
+SEEDS    = [42, 1, 7, 13, 21, 100, 2024, 7777, 555, 88]
 EPOCHS   = 45
 PATIENCE = 14
 BATCH    = 16
@@ -165,6 +166,39 @@ def tpr_gap(y, p, g, thr):
     return abs(tpr(g==0) - tpr(g==1))
 
 
+def paired_summary(a, b, name_a, name_b, higher_better=True):
+    """Honest paired comparison of two per-seed arrays.
+    Reports mean+/-std, per-seed win counts, and a Wilcoxon
+    signed-rank p-value. Returns a dict for JSON + prints a verdict."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    diff = a - b if higher_better else b - a       # positive => a is better
+    wins_a = int((diff > 0).sum())
+    wins_b = int((diff < 0).sum())
+    ties   = int((diff == 0).sum())
+    try:
+        # paired, non-parametric, two-sided
+        stat, p = wilcoxon(a, b)
+        p = float(p)
+    except ValueError:
+        stat, p = float("nan"), 1.0                # all-equal degenerate case
+    n = len(a)
+    print(f"    {name_a}: {a.mean():.3f} +/- {a.std():.3f}")
+    print(f"    {name_b}: {b.mean():.3f} +/- {b.std():.3f}")
+    print(f"    per-seed wins -> {name_a}:{wins_a}  {name_b}:{wins_b}  ties:{ties}  (n={n})")
+    print(f"    Wilcoxon signed-rank p = {p:.4f}  "
+          f"({'SIGNIFICANT' if p < 0.05 else 'NOT significant'} at alpha=0.05)")
+    return {
+        f"{name_a}_mean": round(float(a.mean()), 4),
+        f"{name_a}_std":  round(float(a.std()), 4),
+        f"{name_b}_mean": round(float(b.mean()), 4),
+        f"{name_b}_std":  round(float(b.std()), 4),
+        f"{name_a}_wins": wins_a, f"{name_b}_wins": wins_b, "ties": ties,
+        "n_seeds": n,
+        "wilcoxon_p": round(p, 4),
+        "significant_at_0.05": bool(p < 0.05),
+    }
+
+
 def make_loaders(train, dev, seed):
     set_seed(seed)
     tds = TensorDataset(*[torch.tensor(a) for a in train])
@@ -238,23 +272,34 @@ def experiment_A(train, dev, device):
                                   "f1": round(float(f1),4)})
             print(f"  {cond:14s} seed={seed:4d}  TPR_gap={gap:.3f}  F1={f1:.3f}")
 
-    no_gap   = np.mean([r["tpr_gap"] for r in results["no_fairness"]])
-    with_gap = np.mean([r["tpr_gap"] for r in results["with_fairness"]])
-    no_f1    = np.mean([r["f1"] for r in results["no_fairness"]])
-    with_f1  = np.mean([r["f1"] for r in results["with_fairness"]])
-    print(f"\n  Mean TPR gap  WITHOUT fairness: {no_gap:.3f}")
-    print(f"  Mean TPR gap  WITH    fairness: {with_gap:.3f}")
-    print(f"  Gap reduction: {no_gap-with_gap:+.3f}  "
-          f"(F1 cost: {with_f1-no_f1:+.3f})")
+    no_gaps   = [r["tpr_gap"] for r in results["no_fairness"]]
+    with_gaps = [r["tpr_gap"] for r in results["with_fairness"]]
+    no_f1     = np.mean([r["f1"] for r in results["no_fairness"]])
+    with_f1   = np.mean([r["f1"] for r in results["with_fairness"]])
+
+    print(f"\n  --- Paired analysis ({len(SEEDS)} seeds): does fairness loss "
+          f"reduce the TPR gap? ---")
+    # lower gap is better => higher_better=False so positive diff = with_fairness wins
+    stats = paired_summary(with_gaps, no_gaps, "with_fairness", "no_fairness",
+                           higher_better=False)
+    no_gap, with_gap = np.mean(no_gaps), np.mean(with_gaps)
+    print(f"    worst-case gap: no_fairness={max(no_gaps):.3f} -> "
+          f"with_fairness={max(with_gaps):.3f}")
+    print(f"    F1 cost (with - without): {with_f1-no_f1:+.3f}")
     return {
         "no_fairness_runs": results["no_fairness"],
         "with_fairness_runs": results["with_fairness"],
         "mean_tpr_gap_no_fairness": round(float(no_gap),4),
         "mean_tpr_gap_with_fairness": round(float(with_gap),4),
+        "std_tpr_gap_no_fairness": round(float(np.std(no_gaps)),4),
+        "std_tpr_gap_with_fairness": round(float(np.std(with_gaps)),4),
+        "worst_gap_no_fairness": round(float(max(no_gaps)),4),
+        "worst_gap_with_fairness": round(float(max(with_gaps)),4),
         "gap_reduction": round(float(no_gap-with_gap),4),
         "mean_f1_no_fairness": round(float(no_f1),4),
         "mean_f1_with_fairness": round(float(with_f1),4),
         "f1_cost": round(float(with_f1-no_f1),4),
+        "paired_stats": stats,
     }
 
 
@@ -288,13 +333,18 @@ def experiment_B(train, dev, device):
                                   "f1": round(float(f1),4)})
             print(f"  {cond:10s} seed={seed:4d}  AUC={auc:.3f}  F1={f1:.3f}")
 
-    att_f1  = np.mean([r["f1"] for r in results["attention"]])
-    con_f1  = np.mean([r["f1"] for r in results["concat"]])
-    att_auc = np.mean([r["auc"] for r in results["attention"]])
-    con_auc = np.mean([r["auc"] for r in results["concat"]])
-    print(f"\n  Attention   F1={att_f1:.3f}  AUC={att_auc:.3f}")
-    print(f"  Concat      F1={con_f1:.3f}  AUC={con_auc:.3f}")
-    print(f"  Attention gain: F1 {att_f1-con_f1:+.3f}  AUC {att_auc-con_auc:+.3f}")
+    att_f1s  = [r["f1"]  for r in results["attention"]]
+    con_f1s  = [r["f1"]  for r in results["concat"]]
+    att_aucs = [r["auc"] for r in results["attention"]]
+    con_aucs = [r["auc"] for r in results["concat"]]
+
+    print(f"\n  --- Paired analysis ({len(SEEDS)} seeds): F1 (attention vs concat) ---")
+    f1_stats  = paired_summary(att_f1s, con_f1s, "attention", "concat", higher_better=True)
+    print(f"\n  --- Paired analysis ({len(SEEDS)} seeds): AUC (attention vs concat) ---")
+    auc_stats = paired_summary(att_aucs, con_aucs, "attention", "concat", higher_better=True)
+
+    att_f1, con_f1 = np.mean(att_f1s), np.mean(con_f1s)
+    att_auc, con_auc = np.mean(att_aucs), np.mean(con_aucs)
     return {
         "attention_runs": results["attention"],
         "concat_runs": results["concat"],
@@ -304,6 +354,8 @@ def experiment_B(train, dev, device):
         "concat_auc": round(float(con_auc),4),
         "attention_gain_f1": round(float(att_f1-con_f1),4),
         "attention_gain_auc": round(float(att_auc-con_auc),4),
+        "f1_paired_stats": f1_stats,
+        "auc_paired_stats": auc_stats,
     }
 
 
