@@ -782,16 +782,31 @@ tri-modal over audio-only ($p=0.859$). Definitive superiority claims
 require evaluation on the full test split ($N{=}47$) via AVEC~2017
 challenge submission.
 
+\textbf{Audio-only AUC exceeds tri-modal AUC:} Table~\ref{tab:ablation}
+shows that audio-only achieves AUC~$=0.721\pm0.013$ vs.\
+Phase~8 tri-modal AUC~$=0.658\pm0.029$. This is a known phenomenon
+in multimodal learning on small datasets: adding modalities introduces
+additional noise dimensions under limited supervision, which can
+\emph{hurt} AUC (discrimination) while improving F1 (calibrated
+threshold decision) through multi-task regularization. Three
+observations support this interpretation: (1)~audio-only has the
+lowest AUC variance ($\pm0.013$), indicating it learns the most
+stable discriminative boundary; (2)~tri-modal achieves higher F1
+($0.629$ vs.\ $0.592$) by combining weaker signals with optimized
+threshold; (3)~Leave-one-modality-out ablation shows audio removal
+causes the largest AUC drop ($-0.03$), confirming audio carries
+the primary discriminative signal. On a larger dataset, the additional
+modalities are expected to provide complementary signal rather than noise.
+
 \textbf{PHQ-8 as ground truth:} PHQ-8 is a self-report instrument,
 not a clinician-administered diagnosis. Label noise inherent in
 self-report limits the ceiling performance of any supervised model;
 AUC~=~0.70 may represent the empirical ceiling on this label source.
 
 \textbf{CPU training:} All reported results use CPU training on the
-official splits. GPU training with larger batch sizes and more epochs
-is expected to close the remaining gap to Gong \& Poellabauer
-(F1~=~0.70). BERT-based text encoding is a further avenue for
-text-modality improvement.
+official splits. BERT-based text encoding and larger-scale GPU training
+are avenues for future improvement; no specific performance gain
+is claimed here as these remain untested.
 
 \textbf{Binary gender labels:} DAIC-WOZ provides binary gender only.
 Fairness analysis should be extended to intersectional groups and
