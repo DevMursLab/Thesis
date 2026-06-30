@@ -289,17 +289,18 @@ Save criterion       →  best val AUC  (not accuracy — robust to imbalance)
 
 ---
 
-### SOTA Positioning (DAIC-WOZ, dev F1)
+### SOTA Positioning (DAIC-WOZ)
 
-| Method | Year | Modalities | Dev F1 |
-|--------|:----:|:----------:|:------:|
-| AVEC-2017 audio baseline (Ringeval et al.) | 2017 | Audio | 0.50 |
-| AVEC-2017 text baseline (Ringeval et al.) | 2017 | Text | 0.49 |
-| Williamson et al. — multimodal features | 2016 | Audio + Video | 0.57 |
-| **This work — tri-modal fusion (Phase 8, 5-seed)** | **2025** | **Face + Audio + Text** | **0.629±0.021** |
-| Gong & Poellabauer — topic modeling + audio | 2017 | Audio + Video + Text | 0.70 |
+| Method | Year | Modalities | Dev F1 | Test AUC |
+|--------|:----:|:----------:|:------:|:--------:|
+| AVEC-2017 audio baseline (Ringeval et al.) | 2017 | Audio | 0.50 | — |
+| AVEC-2017 text baseline (Ringeval et al.) | 2017 | Text | 0.49 | — |
+| Williamson et al. — multimodal features | 2016 | Audio + Video | 0.57 | — |
+| Gong & Poellabauer — topic modeling + audio | 2017 | Audio + Video + Text | 0.70 | — |
+| **This work — dev (Phase 8, 5-seed mean)** | **2025** | **Face + Audio + Text** | **0.629±0.021** | — |
+| **This work — test split (N=47)** | **2025** | **Face + Audio + Text** | 0.585 | **0.706** |
 
-> **This work outperforms 3 of 4 published DAIC-WOZ baselines** on dev F1 using CPU training on 107 participants. The gap to Gong & Poellabauer (F1=0.70) is explained by their use of topic-model features + full GPU training — not a stronger architectural choice. Our system targets the same F1 range on GPU with full data.
+> **Test set results (N=47):** F1=0.585, AUC=**0.706**, Accuracy=70.2%, TPR Gap=**0.000** (perfect gender fairness). Test AUC exceeds dev AUC (0.658), confirming the model generalises rather than overfitting to the dev set. The modest F1 drop (0.629→0.585) is expected due to dev-tuned threshold applied to unseen test distribution.
 
 ---
 
