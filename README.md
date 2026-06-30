@@ -305,24 +305,24 @@ Save criterion       →  best val AUC  (not accuracy — robust to imbalance)
 
 ### Phase 9 — Reviewer-Proof Experiments (Fairness + Attention Ablation)
 
-#### Experiment A: Equalized Odds Loss — Fairness Stabilization
+#### Experiment A: Equalized Odds Loss — 10-Seed Wilcoxon Analysis
 
-| Condition | Seed 42 | Seed 1 | Seed 7 | Mean±Std |
-|-----------|:-------:|:------:|:------:|:--------:|
-| No fairness (λ=0) | 0.114 | 0.086 | **0.371** | 0.190 ± 0.148 |
-| With fairness (λ=0.1) | 0.171 | 0.229 | 0.229 | 0.210 ± **0.033** |
+| Condition | Mean TPR Gap | Std | Wins (10 seeds) | Wilcoxon p |
+|-----------|:------------:|:---:|:---------------:|:----------:|
+| No fairness (λ=0) | 0.320 | 0.191 | 4/10 | — |
+| With fairness (λ=0.1) | 0.311 | 0.233 | 3/10 | **0.813** |
 
-> **Key result:** Worst-case TPR gap drops from 0.371 → 0.229 **(−38%)**. Std collapses from 0.148 → 0.033 **(−78%)**. The Equalized Odds loss does not guarantee mean gap reduction on N=34 (insufficient statistical power), but it **reliably prevents catastrophic fairness failures** — the clinically critical property. F1 cost is negligible (+0.003).
+> **Negative result (transparent):** The Equalized Odds loss does **not** significantly reduce the TPR gap at N=34 (Wilcoxon p=0.813). Fairness wins 3/10 seeds, baseline wins 4/10, 3 ties. F1 cost: −0.001. This is an important finding: bias mitigation via differentiable surrogate loss is insufficient with gender-stratified subgroups of ~5 participants. The loss remains as a principled design choice and may become effective at larger scale.
 
-#### Experiment B: Cross-Modal Attention vs. Plain Concatenation
+#### Experiment B: Cross-Modal Attention vs. Plain Concatenation — 10-Seed Wilcoxon Analysis
 
-| Fusion Method | Seed 42 F1 | Seed 1 F1 | Seed 7 F1 | Mean F1 | Mean AUC |
+| Fusion Method | Mean F1 | Mean AUC | F1 wins (10 seeds) | AUC wins | Wilcoxon p (F1) |
 |:---:|:---:|:---:|:---:|:---:|:---:|
-| Cross-Modal Attention | 0.647 | 0.779 | 0.646 | **0.691** | **0.683** |
-| Plain Concatenation | 0.689 | 0.597 | 0.664 | 0.650 | 0.665 |
-| **Attention Gain** | | | | **+0.041** | **+0.018** |
+| Cross-Modal Attention | **0.668 ± 0.050** | **0.667 ± 0.064** | 4/10 | **6/10** | — |
+| Plain Concatenation | 0.644 ± 0.033 | 0.655 ± 0.046 | 5/10 | 4/10 | **0.496** |
+| **Δ (Attn − Concat)** | **+0.024** | **+0.012** | | | n.s. |
 
-> **Cross-modal attention achieves F1 +0.041 and AUC +0.018 over plain concatenation** under identical encoders, classifier, optimizer, and seeds. This is controlled evidence that the attention mechanism — not any other architectural difference — drives the improvement.
+> **Honest result:** Attention shows a **consistent positive trend** (F1 +0.024, AUC wins 6/10 seeds) but the difference is **not statistically significant** at N=34 (F1 p=0.496, AUC p=0.647). We retain attention as default for interpretability (attention weights for clinical auditing) and the consistent positive trend. Definitive superiority claims require the held-out test set (N=47).
 
 ---
 
