@@ -597,12 +597,20 @@ vs.\ $0.655$ ($\Delta=+0.012$). Attention wins 6/10~seeds on AUC.
 However, neither difference reaches statistical significance
 (Wilcoxon signed-rank $p{=}0.496$ for F1; $p{=}0.647$ for AUC, $n{=}10$
 paired seeds), due to high seed variance on the small dev set
-($N{=}34$). We retain cross-modal attention as the default fusion
+($N{=}34$). To characterize \emph{why} the test is inconclusive rather
+than simply reporting non-significance, we compute the paired effect
+size (Cohen's~$d$) and a post-hoc power analysis: F1 shows a small-to-
+medium effect ($d{=}0.34$), requiring $n{\approx}69$ paired seeds for
+80\% power at $\alpha{=}0.05$ (current power at $n{=}10$: 16\%); AUC
+shows a small effect ($d{=}0.19$, $n_{80\%}{\approx}211$, current
+power~9\%). This confirms the study is genuinely underpowered to
+detect an effect of this size, rather than providing evidence of no
+effect. We retain cross-modal attention as the default fusion
 mechanism for two reasons: (1)~a consistent positive trend in both
 metrics across 10~seeds, and (2)~the interpretability benefit of
 attention weights for clinical auditing, which concatenation does not
-provide. Definitive superiority claims require evaluation on the
-held-out test set ($N{=}47$).
+provide. Definitive superiority claims require a substantially larger
+paired-seed study or a larger dataset.
 
 % ============================================================
 \section{Comparison with Published Methods}
@@ -754,12 +762,18 @@ intended effect. The F1 cost is negligible ($-0.001$).
 We report this negative result transparently: bias mitigation via a
 differentiable surrogate loss is insufficient at $N{=}34$, where
 the gender-stratified subgroups contain as few as 5~participants.
-This finding aligns with the theoretical result of \cite{barocas2019}
-that fairness constraints require adequate representation in both
-groups to converge reliably. The Equalized Odds loss remains in our
-framework as a principled design choice and may become effective with
-larger clinical datasets or balanced gender splits---but we make no
-claim of empirical effectiveness at the current scale.
+The paired effect size is negligible (Cohen's~$d{=}-0.07$), and a
+post-hoc power analysis shows that even a study with $n{\approx}1{,}500$
+paired seeds would be needed to reach 80\% power for an effect this
+small at $\alpha{=}0.05$ (current power at $n{=}10$: 6\%)---indicating
+the true effect, if any, is likely too small to be practically
+meaningful at this scale, rather than merely undetected. This finding
+aligns with the theoretical result of \cite{barocas2019} that fairness
+constraints require adequate representation in both groups to converge
+reliably. The Equalized Odds loss remains in our framework as a
+principled design choice and may become effective with larger clinical
+datasets or balanced gender splits---but we make no claim of empirical
+effectiveness at the current scale.
 
 % ============================================================
 \section{Explainability}
