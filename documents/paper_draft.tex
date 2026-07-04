@@ -76,9 +76,9 @@ limitations---rather than state-of-the-art performance.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Depression detection, multimodal fusion, cross-modal attention,
-DAIC-WOZ, CLNF action units, COVAREP, fairness-aware training,
-Equalized Odds, multi-task learning, explainable AI, PHQ-8.
+Depression detection, multi-task learning, PHQ-8, multimodal fusion,
+DAIC-WOZ, CLNF action units, cross-modal attention, fairness-aware
+training, Equalized Odds, explainable AI.
 \end{IEEEkeywords}
 
 % ============================================================
@@ -171,11 +171,15 @@ BERT for transcript encoding alongside audio features, achieving
 AUC~=~0.80. More recent transformer-based approaches
 \cite{shen2022} report AUC~$\approx$~0.83 on extended splits.
 
-Our work is the first on DAIC-WOZ to combine: (1) COVAREP clinical
-audio (F0, NAQ, QOQ, MCEP, FORMANT), (2) Equalized Odds training
-loss, (3) symptom-level PHQ-8 multi-task prediction, and
-(4) controlled multi-seed ablation with identical model class,
-in a single end-to-end system.
+To our knowledge, no prior DAIC-WOZ study combines all of: (1)~extended
+acoustic features (MFCC+COVAREP+FORMANT), (2)~an Equalized Odds
+training loss, (3)~symptom-level PHQ-8 multi-task prediction, and
+(4)~controlled multi-seed ablation with an identical model class, in a
+single end-to-end system. We note that combining these components is
+a methodological first; as reported in Sections~\ref{sec:ablation}
+and~\ref{sec:fairness}, the Equalized Odds loss did not yield a
+statistically significant effect at this sample size, and we report
+that outcome honestly rather than as a validated benefit.
 
 \subsection{Multimodal Fusion for Affect}
 
