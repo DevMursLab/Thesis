@@ -55,7 +55,7 @@ evidence. We present a tri-modal depression risk detection framework
 trained on the DAIC-WOZ corpus (188~participants) that addresses all
 three gaps simultaneously. Our \emph{cross-modal attention} mechanism
 enables each modality---facial action units (CLNF, $N{\times}200{\times}20$),
-clinical-grade audio (MFCC\,+\,COVAREP\,+\,FORMANT, 199-dimensional,
+extended acoustic features (MFCC\,+\,COVAREP\,+\,FORMANT, 199-dimensional,
 $N{\times}300{\times}199$), and transcript TF-IDF bigrams
 ($N{\times}1000$)---to dynamically query the other two via scaled
 dot-product attention. To ensure gender-equitable screening, we
@@ -497,7 +497,7 @@ Face + Text       & $0.667\pm0.069$ & $[0.636, 0.945]$ & $0.570\pm0.063$ & 0.606
 Audio + Text      & $0.664\pm0.057$ & $[0.417, 0.831]$ & $0.437\pm0.114$ & 0.588 \\
 Face + Audio      & $0.712\pm0.028$ & $[0.480, 0.883]$ & $0.563\pm0.041$ & 0.612 \\
 Audio only        & $\mathbf{0.721\pm0.013}$ & $[0.541, 0.899]$ & $0.592\pm0.028$ & 0.676 \\
-Tri-Modal (P7)    & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ & 0.688 \\
+Tri-Modal (single-task) & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ & 0.688 \\
 \midrule
 \textbf{Proposed (multi-task)} & $0.658\pm0.029$ & $[0.500, 0.879]$
   & $\mathbf{0.629\pm0.021}$ & $\mathbf{0.688}$ \\
@@ -524,7 +524,8 @@ $p=0.859$---not significant at $\alpha=0.05$, expected given $N=34$.
 The F1 improvement is consistent across all five seeds
 (range: 0.598--0.662, Fig.~\ref{fig:seeds}), providing seed-level
 evidence of genuine signal rather than a single lucky draw
-\cite{bouthillier2021}.
+\cite{bouthillier2021}. Fig.~\ref{fig:p7p8} summarizes the mean-level
+comparison between the two models.
 
 \begin{figure}[t]
   \centering
@@ -649,11 +650,12 @@ GPU-trained architectures; our system does not claim to surpass these.
 Our contribution is methodological: controlled ablation with an
 identical model class, symptom-level multi-task learning, and honest
 characterization of failure modes (fairness loss, attention), rather
-than raw performance advancement.
+than raw performance advancement. Fig.~\ref{fig:sota} visualizes this
+positioning against the classical (non-transformer) baselines.
 
 On the held-out test split ($N{=}47$), the model achieves
 F1\,$=0.585$ and AUC\,$=0.706$---the latter \emph{exceeding} the dev
-AUC of $0.658\pm0.029$, indicating the model generalises rather than
+AUC of $0.658\pm0.029$, indicating the model generalizes rather than
 overfitting to the dev set. The test F1 drop ($0.629\to0.585$) is
 expected: the decision threshold is derived from the dev set and may not
 optimally calibrate for the test distribution. The test-set gender
@@ -960,8 +962,7 @@ Barcelona, Spain, 2016, pp.~3315--3323.
 \bibitem{barocas2019}
 S.~Barocas, M.~Hardt, and A.~Narayanan,
 \textit{Fairness and Machine Learning: Limitations and Opportunities}.
-Cambridge, MA, USA: MIT Press, 2023.
-[Online]. Available: \url{https://fairmlbook.org}
+2019. [Online]. Available: \url{https://fairmlbook.org}
 
 \bibitem{ekman1978}
 P.~Ekman and W.~V.~Friesen,
