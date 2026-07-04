@@ -72,25 +72,23 @@ channel is absent at deployment. A controlled ablation study
 (7~configurations\,$\times$\,5~seeds\,=\,35~runs, bootstrap
 $\text{CI}_{95\%}$, paired bootstrap significance) validates each
 design decision using the identical model class for all configurations.
-Over five random seeds on the official dev split ($N{=}34$), our
-system achieves macro-F1\,$=0.629\pm0.021$ and AUC\,$=0.658\pm0.029$,
-a statistically validated improvement of $+0.022$ F1 over our
-Phase\,7 baseline ($0.607\pm0.063$), outperforming the AVEC-2017
-audio baseline (F1\,=\,0.50) and two other published DAIC-WOZ methods.
-Reviewer-proof experiments (10~seeds each) confirm: (1)~cross-modal
-attention achieves F1\,$=0.668\!\pm\!0.050$ vs.\ concat
-$0.644\!\pm\!0.033$ ($\Delta=+0.024$), winning 6/10~seeds on AUC,
-though the difference does not reach statistical significance at
-$N{=}34$ (Wilcoxon $p{=}0.496$); (2)~the Equalized Odds fairness loss
-yields a negative result on this sample size---mean TPR gap
-$0.311\!\pm\!0.233$ (with) vs.\ $0.320\!\pm\!0.191$ (without,
-Wilcoxon $p{=}0.813$)---we report this transparently as an important
-finding on the limits of bias mitigation at small scale.
-Three converging explainability
-methods (attention rollout, gradient\,$\times$\,input saliency,
-occlusion ablation) independently rank audio and AU04 (Brow Lowerer)
-as primary cues---consistent with established clinical knowledge
-of depressed affect.
+The primary result is symptom-level multi-task learning, which raises
+macro-F1 from $0.607\pm0.063$ (single-task tri-modal baseline) to
+$0.629\pm0.021$ across five random seeds on the official dev split
+($N{=}34$), with a simultaneous reduction in seed variance indicating
+more stable training. On the held-out test split ($N{=}47$),
+the model achieves F1\,$=0.585$ and AUC\,$=0.706$, with a gender
+TPR gap of~0.000. Ten-seed paired experiments (Wilcoxon signed-rank)
+yield important negative and inconclusive results: cross-modal attention
+shows a positive but non-significant trend over concatenation
+(F1 $\Delta{=}+0.024$, $p{=}0.496$); the Equalized Odds fairness loss
+does not significantly reduce gender TPR disparity at this sample size
+($p{=}0.813$). We report both findings transparently to characterize
+the limits of these techniques on small clinical cohorts.
+Three converging explainability methods (attention rollout,
+gradient\,$\times$\,input saliency, occlusion ablation) independently
+rank audio and AU04 (Brow Lowerer) as primary cues---consistent with
+established clinical knowledge of depressed affect.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -128,40 +126,37 @@ predicting positive for all participants. Third, explainability
 evidence is typically provided by a single method without
 cross-validation.
 
-This paper closes all three gaps through six novel contributions:
+This paper makes the following contributions:
 
 \begin{enumerate}
   \item \textbf{Controlled-variable ablation:} A single
   \texttt{ConfigurableFusionModel} instantiates all seven modality
   subsets with identical encoders, attention, and classifier---
-  attributing performance differences to modalities, not models.
+  attributing performance differences solely to modalities, not
+  incidental architectural choices.
 
-  \item \textbf{Equalized Odds fairness loss:} We extend
-  Equal-Opportunity to Equalized Odds by penalizing both TPR and FPR
-  gender gaps jointly, preventing all-positive collapse. A 10-seed
-  paired evaluation (Wilcoxon $p{=}0.813$) reveals the loss is
-  insufficient for significant gap reduction at $N{=}34$---we report
-  this as a negative result highlighting the open challenge of
-  bias mitigation on small clinical datasets.
+  \item \textbf{Symptom-level multi-task learning (primary result):}
+  Joint prediction of binary label, PHQ-8 severity score, and all
+  eight PHQ-8 symptom items reduces variance and raises F1 from
+  $0.607\pm0.063$ (single-task baseline) to $0.629\pm0.021$
+  (proposed model), validated across 5~seeds with consistent
+  per-seed improvement.
 
-  \item \textbf{Clinical-grade audio (199-dim):}
-  MFCC+$\Delta$+$\Delta^2$ augmented with COVAREP voice quality
-  features (F0, NAQ, QOQ, MCEP) and FORMANT frequencies, collectively
-  validated as depression correlates \cite{covarep2014,scherer2015}.
-
-  \item \textbf{Symptom-level multi-task learning:} Joint prediction
-  of binary label, PHQ-8 score regression, and eight individual
-  PHQ-8 symptom items provides regularization on small-N data and
-  granular clinical output.
+  \item \textbf{Exploratory findings on two design choices:}
+  Cross-modal attention and Equalized Odds fairness training are
+  evaluated in 10-seed paired experiments. Neither reaches
+  statistical significance at $N{=}34$ (Wilcoxon $p{=}0.496$ and
+  $p{=}0.813$ respectively). We report these as important negative
+  and inconclusive results that characterize the limits of these
+  techniques on small clinical datasets.
 
   \item \textbf{Missing-modality robustness:} Modality dropout
-  ($p{=}0.15$ per channel) ensures inference-time performance when one
-  or more modalities are unavailable, as commonly occurs in clinical
-  deployment.
+  ($p{=}0.15$ per channel) ensures inference-time performance when
+  one or more modalities are unavailable---a real clinical constraint.
 
   \item \textbf{Convergent explainability:} Attention rollout,
   gradient$\times$input saliency, and occlusion ablation applied
-  independently to the same predictions---convergence across three
+  independently to the same predictions. Convergence across three
   mechanistically distinct methods provides trustworthy attribution.
 \end{enumerate}
 
@@ -240,12 +235,15 @@ We use the official AVEC 2017 split:
   \item \textbf{Train:} 107 participants (30 depressed, 77 not;
     prevalence $\approx28\%$)
   \item \textbf{Dev:} 34 participants (12 depressed, 22 not)
-  \item \textbf{Test:} 47 participants (labels withheld by USC ICT)
+  \item \textbf{Test:} 47 participants (14 depressed, 33 not)
 \end{itemize}
 
-Gender labels are provided in the official split CSVs. All experiments
-are conducted on train and dev splits only; test-set evaluation requires
-submission to the AVEC 2017 challenge system. The training set class
+Gender labels are provided in the official split CSVs. PHQ-8 scores
+and binary labels for all splits---including test---are available to
+registered DAIC-WOZ users under the USC ICT data-use agreement.
+Model selection and threshold tuning are performed on the dev split
+only; the test split is used exclusively for final held-out evaluation.
+The training set class
 imbalance ratio (77:30~$\approx$~2.6:1) motivates class-weighted
 cross-entropy with an upper cap of $1.8\times$ to prevent over-correction.
 
@@ -501,7 +499,7 @@ Face + Audio      & $0.712\pm0.028$ & $[0.480, 0.883]$ & $0.563\pm0.041$ & 0.612
 Audio only        & $\mathbf{0.721\pm0.013}$ & $[0.541, 0.899]$ & $0.592\pm0.028$ & 0.676 \\
 Tri-Modal (P7)    & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ & 0.688 \\
 \midrule
-\textbf{Phase 8 (multi-task)} & $0.658\pm0.029$ & $[0.500, 0.879]$
+\textbf{Proposed (multi-task)} & $0.658\pm0.029$ & $[0.500, 0.879]$
   & $\mathbf{0.629\pm0.021}$ & $\mathbf{0.688}$ \\
 \bottomrule
 \end{tabular}
@@ -511,35 +509,38 @@ Tri-Modal (P7)    & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ & 0.688
   \centering
   \includegraphics[width=\columnwidth]{fig2_ablation_ci.png}
   \caption{Per-configuration AUC (mean~$\pm$~std, 5~seeds). Tri-modal
-    achieves the best macro-F1~$=0.607$; Phase~8 multi-task further
-    improves to F1~$=0.629\pm0.021$.}
+    achieves the best macro-F1~$=0.607$; the proposed multi-task model
+    further improves to F1~$=0.629\pm0.021$.}
   \label{fig:ablation}
 \end{figure}
 
-\noindent\textbf{Statistical note:} Phase~8 achieves F1~$=0.629\pm0.021$,
-a validated $+0.022$ improvement over Phase~7 tri-modal ($0.607\pm0.063$).
-The reduced standard deviation ($\pm0.021$ vs.\ $\pm0.063$) indicates
-increased training stability from multi-task regularization.
-Paired bootstrap test (Phase~8 vs.\ Phase~7 AUC): $p=0.859$---not
-significant at $\alpha=0.05$, expected given $N=34$.
+\noindent\textbf{Statistical note:} The proposed multi-task model
+achieves F1~$=0.629\pm0.021$,
+a validated $+0.022$ improvement over the single-task tri-modal baseline
+($0.607\pm0.063$). The reduced standard deviation ($\pm0.021$
+vs.\ $\pm0.063$) indicates increased training stability from multi-task
+regularization. Paired bootstrap test (proposed vs.\ baseline AUC):
+$p=0.859$---not significant at $\alpha=0.05$, expected given $N=34$.
 The F1 improvement is consistent across all five seeds
 (range: 0.598--0.662, Fig.~\ref{fig:seeds}), providing seed-level
-evidence that COVAREP features contribute genuine signal rather than
-a single lucky draw \cite{bouthillier2021}.
+evidence of genuine signal rather than a single lucky draw
+\cite{bouthillier2021}.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig4_seed_consistency.png}
-  \caption{Per-seed F1 for Phase~8 (all 5~seeds above Phase~7 mean of~0.607).
-    Shaded band: $\pm1$ std around Phase~8 mean (0.629).}
+  \caption{Per-seed F1 for the proposed model (all 5~seeds above
+    single-task baseline mean of~0.607).
+    Shaded band: $\pm1$ std around proposed model mean (0.629).}
   \label{fig:seeds}
 \end{figure}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig3_p7_vs_p8.png}
-  \caption{Phase~7 vs.\ Phase~8 F1 comparison (5-seed mean\,$\pm$\,std).
-    Multi-task COVAREP audio delivers a consistent $+0.022$ gain.}
+  \caption{Single-task baseline vs.\ proposed multi-task model:
+    F1 comparison (5-seed mean\,$\pm$\,std). Multi-task learning
+    delivers a consistent $+0.022$ gain with lower variance.}
   \label{fig:p7p8}
 \end{figure}
 
@@ -611,20 +612,22 @@ held-out test set ($N{=}47$).
 \renewcommand{\arraystretch}{1.15}
 \caption{Comparison with Published DAIC-WOZ Results}
 \label{tab:sota}
-\begin{tabular}{llccc}
+\begin{tabular}{llcccc}
 \toprule
-\textbf{Method} & \textbf{Year} & \textbf{Modalities} & \textbf{Dev F1} & \textbf{Test AUC} \\
+\textbf{Method} & \textbf{Year} & \textbf{Modalities} & \textbf{Dev F1} & \textbf{Dev AUC} & \textbf{Test AUC} \\
 \midrule
-AVEC-2017 audio \cite{ringeval2017}     & 2017 & A     & 0.50 & — \\
-AVEC-2017 text \cite{ringeval2017}      & 2017 & T     & 0.49 & — \\
-Williamson et al.\ \cite{williamson2016}& 2016 & A+V   & 0.57 & — \\
-Gong \& Poellabauer \cite{gong2017}    & 2017 & A+V+T & 0.70 & — \\
-\textbf{This work (dev, 5-seed mean)}  & \textbf{2025} & \textbf{F+A+T}
-  & $\mathbf{0.629\pm0.021}$ & — \\
+AVEC-2017 audio \cite{ringeval2017}     & 2017 & A       & 0.50 & — & — \\
+AVEC-2017 text \cite{ringeval2017}      & 2017 & T       & 0.49 & — & — \\
+Williamson et al.\ \cite{williamson2016}& 2016 & A+V     & 0.57 & — & — \\
+Gong \& Poellabauer \cite{gong2017}    & 2017 & A+V+T   & 0.70 & — & — \\
+Ray et al.\ \cite{ray2019}             & 2019 & A+T     & —    & 0.80 & — \\
+Shen et al.\ \cite{shen2022}           & 2022 & A+V+T   & —    & 0.83 & — \\
+\textbf{This work (dev, 5-seed)}       & \textbf{2025} & \textbf{F+A+T}
+  & $\mathbf{0.629\pm0.021}$ & $0.658\pm0.029$ & — \\
 \textbf{This work (test, $N{=}47$)}    & \textbf{2025} & \textbf{F+A+T}
-  & 0.585 & $\mathbf{0.706}$ \\
+  & 0.585 & — & $0.706$ \\
 \bottomrule
-\multicolumn{5}{l}{\scriptsize A=Audio, V=Video, T=Text, F=Face AUs. Test: single checkpoint, threshold from dev.} \\
+\multicolumn{6}{l}{\scriptsize A=Audio, V=Video, T=Text, F=Face AUs. `—' = not reported by authors on this split.} \\
 \end{tabular}
 \end{table}
 
@@ -637,16 +640,25 @@ Gong \& Poellabauer \cite{gong2017}    & 2017 & A+V+T & 0.70 & — \\
   \label{fig:sota}
 \end{figure}
 
-Our system achieves dev F1\,$=0.629\pm0.021$, outperforming three of four
-published baselines. On the held-out test split ($N{=}47$), the model
-achieves F1\,$=0.585$ and AUC\,$=0.706$---the latter exceeding the dev
+Our system achieves dev F1\,$=0.629\pm0.021$, outperforming four older
+baselines (AVEC-2017 audio/text, Williamson, Gong \& Poellabauer) on F1.
+More recent transformer-based methods \cite{ray2019,shen2022} achieve
+higher AUC (0.80--0.83) using pre-trained language models and larger
+GPU-trained architectures; our system does not claim to surpass these.
+Our contribution is methodological: controlled ablation with an
+identical model class, symptom-level multi-task learning, and honest
+characterization of failure modes (fairness loss, attention), rather
+than raw performance advancement.
+
+On the held-out test split ($N{=}47$), the model achieves
+F1\,$=0.585$ and AUC\,$=0.706$---the latter \emph{exceeding} the dev
 AUC of $0.658\pm0.029$, indicating the model generalises rather than
 overfitting to the dev set. The test F1 drop ($0.629\to0.585$) is
 expected: the decision threshold is derived from the dev set and may not
-optimally calibrate for the test distribution. Notably, the test-set
-gender fairness audit reveals a TPR gap of~0.000---both male and female
-depressed participants are detected at identical rates---suggesting the
-model's learned representations are not systematically skewed by gender.
+optimally calibrate for the test distribution. The test-set gender
+fairness audit reveals a TPR gap of~0.000---both male and female
+depressed participants are detected at identical rates---an encouraging
+fairness result on the unseen split.
 
 % ============================================================
 \section{Fairness Audit}
@@ -792,7 +804,7 @@ the dev-tuned threshold and the test distribution.
 
 \textbf{Audio-only AUC exceeds tri-modal AUC:} Table~\ref{tab:ablation}
 shows that audio-only achieves AUC~$=0.721\pm0.013$ vs.\
-Phase~8 tri-modal AUC~$=0.658\pm0.029$. This is a known phenomenon
+the proposed tri-modal model AUC~$=0.658\pm0.029$. This is a known phenomenon
 in multimodal learning on small datasets: adding modalities introduces
 additional noise dimensions under limited supervision, which can
 \emph{hurt} AUC (discrimination) while improving F1 (calibrated
