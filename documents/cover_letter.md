@@ -2,9 +2,9 @@
 
 Dear Editor,
 
-We submit our manuscript, "Tri-Modal Depression Risk Detection via Cross-Modal
-Attention Fusion with Equalized Odds Fairness Constraints and Symptom-Level
-Multi-Task Learning on DAIC-WOZ," for consideration for publication.
+We submit our manuscript, "Multi-Task Learning for Tri-Modal Depression
+Detection: A Controlled Ablation Study on DAIC-WOZ," for consideration for
+publication.
 
 **Summary of contribution.** This work presents a controlled study of
 multimodal depression screening on the DAIC-WOZ corpus. Our primary validated
