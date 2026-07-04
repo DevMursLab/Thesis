@@ -45,9 +45,16 @@ We believe this combination of rigor, transparency, and clinically grounded
 interpretability is well suited to [JOURNAL NAME]'s readership, and we hope
 the manuscript will be considered for peer review.
 
+This work is original, has not been published previously, and is not under
+consideration for publication elsewhere. Both authors have approved the
+manuscript and agree with its submission to the journal.
+
 Thank you for your time and consideration.
 
 Sincerely,
-Md. Mursalin
-Md. Shovon
-Department of Computer Science and Engineering, Netrokona University
+Md. Mursalin (Corresponding Author)
+Department of Computer Science and Engineering
+Netrokona University, Bangladesh
+Email: mursalinshuvo27@gmail.com
+
+On behalf of: Md. Shovon (Supervisor)
