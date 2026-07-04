@@ -46,49 +46,34 @@ Code: \url{https://github.com/DevMursLab/Thesis}.}%
 
 % ============================================================
 \begin{abstract}
-Automated depression screening from clinical interview recordings is
-a high-stakes task demanding multimodal analysis, demographic fairness,
-and clinical interpretability. Existing approaches either fuse modalities
-through simple concatenation without controlled ablation, neglect
-gender-equitable performance, or lack converging explainability
-evidence. We present a tri-modal depression risk detection framework
-trained on the DAIC-WOZ corpus (188~participants) that addresses all
-three gaps simultaneously. Our \emph{cross-modal attention} mechanism
-enables each modality---facial action units (CLNF, $N{\times}200{\times}20$),
-extended acoustic features (MFCC\,+\,COVAREP\,+\,FORMANT, 199-dimensional,
-$N{\times}300{\times}199$), and transcript TF-IDF bigrams
-($N{\times}1000$)---to dynamically query the other two via scaled
-dot-product attention. To ensure gender-equitable screening, we
-integrate an \emph{Equalized Odds} loss
-$\mathcal{L}_\text{fair}=(\text{TPR}_M-\text{TPR}_F)^2+
-(\text{FPR}_M-\text{FPR}_F)^2$
-that jointly penalizes TPR and FPR disparities, preventing the
-all-positive collapse that TPR-only constraints permit. We further
-introduce symptom-level \emph{multi-task learning}---jointly predicting
-the binary label, PHQ-8 severity score, and all eight PHQ-8 symptom
-items---providing clinical interpretability beyond binary output.
-Modality dropout ($p{=}0.15$) ensures robustness when any input
-channel is absent at deployment. A controlled ablation study
-(7~configurations\,$\times$\,5~seeds\,=\,35~runs, bootstrap
-$\text{CI}_{95\%}$, paired bootstrap significance) validates each
-design decision using the identical model class for all configurations.
-The primary result is symptom-level multi-task learning, which raises
-macro-F1 from $0.607\pm0.063$ (single-task tri-modal baseline) to
-$0.629\pm0.021$ across five random seeds on the official dev split
-($N{=}34$), with a simultaneous reduction in seed variance indicating
-more stable training. On the held-out test split ($N{=}47$),
-the model achieves F1\,$=0.585$ and AUC\,$=0.706$, with a gender
-TPR gap of~0.000. Ten-seed paired experiments (Wilcoxon signed-rank)
-yield important negative and inconclusive results: cross-modal attention
-shows a positive but non-significant trend over concatenation
-(F1 $\Delta{=}+0.024$, $p{=}0.496$); the Equalized Odds fairness loss
-does not significantly reduce gender TPR disparity at this sample size
-($p{=}0.813$). We report both findings transparently to characterize
-the limits of these techniques on small clinical cohorts.
-Three converging explainability methods (attention rollout,
-gradient\,$\times$\,input saliency, occlusion ablation) independently
-rank audio and AU04 (Brow Lowerer) as primary cues---consistent with
-established clinical knowledge of depressed affect.
+Automated depression screening from clinical interviews requires
+multimodal analysis, demographic fairness, and clinical
+interpretability, yet prior work rarely evaluates all three under
+controlled conditions. We present a tri-modal (facial action units,
+acoustic features, transcript text) depression-risk framework on the
+DAIC-WOZ corpus, using a single \texttt{ConfigurableFusionModel}
+class across seven modality subsets (5~seeds each) to isolate genuine
+modality contribution from architectural confounds. Our primary
+validated result is symptom-level \emph{multi-task learning}---jointly
+predicting the binary label, PHQ-8 score, and eight symptom
+items---which raises macro-F1 from $0.607\pm0.063$ to
+$0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
+reduced seed variance. On the held-out test split ($N{=}47$), the
+model achieves F1\,$=0.585$, AUC\,$=0.706$, and a gender TPR gap of
+0.000, indicating generalization beyond the dev set. We additionally
+evaluate cross-modal attention fusion and an Equalized Odds fairness
+loss in 10-seed paired Wilcoxon experiments; neither reaches
+significance at this sample size (F1 $p{=}0.496$; TPR-gap
+$p{=}0.813$), and post-hoc power analysis shows the study is
+genuinely underpowered for these effect sizes rather than showing
+true null effects. We report both as transparent negative/inconclusive
+findings rather than reframing them as successes. Three convergent
+explainability methods (attention rollout, gradient$\times$input
+saliency, occlusion ablation) independently identify audio and AU04
+(Brow Lowerer) as the primary predictive cues, consistent with
+established clinical markers of depressed affect. Our contribution is
+methodological rigor and transparent reporting---including honest
+limitations---rather than state-of-the-art performance.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -895,6 +880,43 @@ gradient$\times$input saliency, occlusion) complete the framework.
 Future work includes GPU training, BERT text encoding, and
 replication on larger corpora such as E-DAIC to determine whether
 attention and fairness effects become significant with more data.
+
+% ============================================================
+\section*{Ethics Statement}
+This study performs secondary analysis of the DAIC-WOZ corpus, which
+was collected by the University of Southern California Institute for
+Creative Technologies (USC ICT) under its own institutional human-
+subjects protocol, with documented participant informed consent
+\cite{gratch2014}. The authors did not collect any new data from human
+participants and accessed only de-identified interview recordings and
+questionnaire scores under the standard USC ICT data-use agreement;
+no additional institutional review was required for this secondary
+analysis at the authors' institution.
+
+% ============================================================
+\section*{Data Availability Statement}
+The DAIC-WOZ corpus is not publicly redistributable; it is available
+to qualified researchers directly from USC ICT
+(\url{https://dcapswoz.ict.usc.edu/}) upon signing a data-use
+agreement. FER2013, used only for encoder pre-training, is a publicly
+available Kaggle dataset. All source code, trained model
+configurations, and result artifacts (excluding the restricted raw
+dataset) are available at
+\url{https://github.com/DevMursLab/Thesis}.
+
+% ============================================================
+\section*{Author Contributions}
+Md.~Mursalin: conceptualization, methodology, software, formal
+analysis, investigation, data curation, writing---original draft,
+visualization. Md.~Shovon: methodology, validation, writing---review
+and editing, supervision. Both authors read and approved the final
+manuscript.
+
+% ============================================================
+\section*{Conflict of Interest Statement}
+The authors declare that they have no known competing financial
+interests or personal relationships that could have appeared to
+influence the work reported in this paper.
 
 % ============================================================
 \section*{Acknowledgment}
