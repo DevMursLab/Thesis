@@ -153,7 +153,7 @@ def fig_p7_vs_p8():
     p8_f1  = p8["f1_mean"]; p8_std = p8["f1_std"]
 
     fig, ax = plt.subplots(figsize=(5.5, 4))
-    x = ["Phase 7\nTri-Modal\n(MFCC)", "Phase 8\nMulti-Task\n(+COVAREP)"]
+    x = ["Single-Task\nBaseline\n(MFCC)", "Proposed\nMulti-Task\n(+COVAREP)"]
     y = [p7_tri, p8_f1]
     e = [p7_tri_std, p8_std]
     colors = [NAVY, CORAL]
@@ -161,7 +161,7 @@ def fig_p7_vs_p8():
                   edgecolor="black", linewidth=0.9, width=0.55)
     ax.set_ylabel("Macro-F1 (mean ± std, 5 seeds)")
     ax.set_ylim(0.45, 0.72)
-    ax.set_title("Fig. 3.  Phase 8 Improvement over Phase 7")
+    ax.set_title("Fig. 3.  Proposed Multi-Task Model vs. Single-Task Baseline")
     for b, v, s in zip(bars, y, e):
         ax.text(b.get_x() + b.get_width()/2, v + s + 0.005, f"{v:.3f}±{s:.3f}",
                 ha="center", fontsize=8.5, weight="bold")
@@ -184,11 +184,11 @@ def fig_seed_consistency():
 
     fig, ax = plt.subplots(figsize=(6, 3.6))
     ax.scatter(range(len(seeds)), f1s, s=120, color=CORAL,
-               edgecolor="black", zorder=3, label="Phase 8 per-seed F1")
+               edgecolor="black", zorder=3, label="Proposed model per-seed F1")
     ax.axhline(p8["f1_mean"], color=CORAL, ls="-", lw=1.5,
-               label=f"Phase 8 mean ({p8['f1_mean']:.3f})")
+               label=f"Proposed model mean ({p8['f1_mean']:.3f})")
     ax.axhline(p7_tri, color=NAVY, ls="--", lw=1.5,
-               label=f"Phase 7 mean ({p7_tri:.3f})")
+               label=f"Single-task baseline mean ({p7_tri:.3f})")
     ax.fill_between([-0.5, len(seeds)-0.5],
                     p8["f1_mean"]-p8["f1_std"], p8["f1_mean"]+p8["f1_std"],
                     color=CORAL, alpha=0.12)
@@ -196,7 +196,7 @@ def fig_seed_consistency():
     ax.set_xticklabels([f"seed {s}" for s in seeds])
     ax.set_ylabel("Macro-F1")
     ax.set_xlim(-0.5, len(seeds)-0.5)
-    ax.set_title("Fig. 4.  Phase 8 Per-Seed Consistency (all 5 above Phase 7)")
+    ax.set_title("Fig. 4.  Proposed Model Per-Seed Consistency (all 5 above baseline)")
     ax.legend(fontsize=7.5, loc="lower right")
     plt.savefig(FIGURES / "fig4_seed_consistency.png")
     plt.close()
@@ -207,7 +207,7 @@ def fig_seed_consistency():
 def fig_sota():
     """Fig 5 — SOTA positioning."""
     methods = ["AVEC'17\ntext", "AVEC'17\naudio", "Williamson+\n'16",
-               "THIS WORK\n(Phase 8)", "Gong+\n'17"]
+               "THIS WORK\n(proposed)", "Gong+\n'17"]
     f1s     = [0.49, 0.50, 0.57, 0.629, 0.70]
     colors  = ["#999", "#999", "#777", CORAL, "#555"]
 
