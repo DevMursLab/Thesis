@@ -1,14 +1,22 @@
 """
 Publication-Quality Figure Generation
 ======================================
-Generates all figures referenced in the IEEE paper from verified metrics:
+Generates all 8 figures referenced in the IEEE paper from verified metrics.
+Figure numbers are NOT embedded in the images -- LaTeX \caption/\label
+auto-numbering is the single source of truth, since the figures' order
+of appearance in the manuscript does not match their filename suffixes
+(e.g. fig8_attention_vs_concat.png appears before fig5_sota.png in the
+document). Embedding a hardcoded "Fig. N" title previously caused a
+number mismatch between the image and its actual caption.
 
-  Fig 1. System architecture (schematic block diagram)
-  Fig 2. Ablation: per-config AUC with bootstrap CI error bars (7 configs)
-  Fig 3. Phase 7 vs Phase 8: F1 comparison with std bands
-  Fig 4. Per-seed consistency strip plot (Phase 8, 5 seeds)
-  Fig 5. SOTA positioning bar chart (this work vs published DAIC-WOZ)
-  Fig 6. Fairness gap radar (4 criteria, male vs female)
+  fig1_architecture.png          System architecture (schematic block diagram)
+  fig2_ablation_ci.png           Ablation: per-config AUC with bootstrap CI (7 configs)
+  fig3_p7_vs_p8.png               Single-task baseline vs. proposed multi-task: F1 comparison
+  fig4_seed_consistency.png       Per-seed consistency strip plot (5 seeds)
+  fig5_sota.png                   SOTA positioning bar chart (this work vs published DAIC-WOZ)
+  fig6_fairness_radar.png         Fairness gap radar (4 criteria, male vs female)
+  fig7_fairness_before_after.png  Equalized-Odds loss: per-seed TPR gap (10 seeds)
+  fig8_attention_vs_concat.png    Cross-modal attention vs. concatenation (10 seeds)
 
 All numbers loaded from results/metrics/*.json — no hard-coded values.
 300 DPI, serif fonts, IEEE-compatible sizing.
@@ -109,7 +117,7 @@ def fig_architecture():
     arrow(6.0, 2.5, 6.0, 1.8)
     arrow(6.0, 2.5, 9.9, 1.8)
 
-    ax.set_title("Fig. 1.  Tri-Modal Multi-Task Architecture with Cross-Modal Attention",
+    ax.set_title("Tri-Modal Multi-Task Architecture with Cross-Modal Attention",
                  fontsize=11, weight="bold", pad=10)
     plt.savefig(FIGURES / "fig1_architecture.png")
     plt.close()
@@ -134,7 +142,7 @@ def fig_ablation_ci():
     ax.axhline(0.5, ls="--", color="gray", lw=1, label="Random (0.50)")
     ax.set_ylabel("Dev AUC (mean ± std, 5 seeds)")
     ax.set_ylim(0.4, 0.85)
-    ax.set_title("Fig. 2.  Ablation: AUC by Modality Configuration")
+    ax.set_title("Ablation: AUC by Modality Configuration")
     for b, m in zip(bars, means):
         ax.text(b.get_x() + b.get_width()/2, m + 0.012, f"{m:.3f}",
                 ha="center", fontsize=8)
@@ -161,7 +169,7 @@ def fig_p7_vs_p8():
                   edgecolor="black", linewidth=0.9, width=0.55)
     ax.set_ylabel("Macro-F1 (mean ± std, 5 seeds)")
     ax.set_ylim(0.45, 0.72)
-    ax.set_title("Fig. 3.  Proposed Multi-Task Model vs. Single-Task Baseline")
+    ax.set_title("Proposed Multi-Task Model vs. Single-Task Baseline")
     for b, v, s in zip(bars, y, e):
         ax.text(b.get_x() + b.get_width()/2, v + s + 0.005, f"{v:.3f}±{s:.3f}",
                 ha="center", fontsize=8.5, weight="bold")
@@ -196,7 +204,7 @@ def fig_seed_consistency():
     ax.set_xticklabels([f"seed {s}" for s in seeds])
     ax.set_ylabel("Macro-F1")
     ax.set_xlim(-0.5, len(seeds)-0.5)
-    ax.set_title("Fig. 4.  Proposed Model Per-Seed Consistency (all 5 above baseline)")
+    ax.set_title("Proposed Model Per-Seed Consistency (all 5 above baseline)")
     ax.legend(fontsize=7.5, loc="lower right")
     plt.savefig(FIGURES / "fig4_seed_consistency.png")
     plt.close()
@@ -216,7 +224,7 @@ def fig_sota():
                   edgecolor="black", linewidth=0.8)
     ax.set_ylabel("DAIC-WOZ Dev F1")
     ax.set_ylim(0.4, 0.75)
-    ax.set_title("Fig. 5.  Positioning vs. Published DAIC-WOZ Results")
+    ax.set_title("Positioning vs. Published DAIC-WOZ Results")
     for b, v in zip(bars, f1s):
         ax.text(b.get_x()+b.get_width()/2, v+0.008, f"{v:.3f}",
                 ha="center", fontsize=8.5,
@@ -244,7 +252,7 @@ def fig_fairness_radar():
     ax.fill(angles, female, color=CORAL, alpha=0.12)
     ax.set_xticks(angles[:-1]); ax.set_xticklabels(crit, fontsize=8.5)
     ax.set_ylim(0, 1.05)
-    ax.set_title("Fig. 6.  Gender Fairness Audit\n(EO gap 0.286 = real bias detected)",
+    ax.set_title("Gender Fairness Audit\n(EO gap 0.286 = real bias detected)",
                  fontsize=10, pad=20)
     ax.legend(loc="upper right", bbox_to_anchor=(1.25, 1.1), fontsize=9)
     plt.savefig(FIGURES / "fig6_fairness_radar.png")
@@ -274,7 +282,7 @@ def fig_fairness_before_after():
     mn_no  = np.mean(no_fair)
     mn_wi  = np.mean(with_fair)
     ax.set_title(
-        f"Fig. 7.  Equalized-Odds Loss: Mixed Results over 10 Seeds\n"
+        f"Equalized-Odds Loss: Mixed Results over 10 Seeds\n"
         f"(mean gap: {mn_wi:.3f}±{np.std(with_fair):.3f} vs "
         f"{mn_no:.3f}±{np.std(no_fair):.3f},  Wilcoxon p=0.813,  wins: fair=3, base=4, ties=3)",
         fontsize=9
@@ -331,7 +339,7 @@ def fig_attention_vs_concat():
                         f"{v:.3f}", ha="center", fontsize=6.5)
 
     fig.suptitle(
-        "Fig. 8.  Cross-Modal Attention vs. Concatenation  (10 seeds, identical encoders/classifier)\n"
+        "Cross-Modal Attention vs. Concatenation  (10 seeds, identical encoders/classifier)\n"
         "Attn: F1=0.668±0.050, AUC=0.667±0.064  |  Concat: F1=0.644±0.033, AUC=0.655±0.046  |  Neither difference significant",
         fontsize=9, weight="bold"
     )
