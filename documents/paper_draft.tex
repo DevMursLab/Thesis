@@ -60,8 +60,12 @@ predicting the binary label, PHQ-8 score, and eight symptom
 items---which raises macro-F1 from $0.607\pm0.063$ to
 $0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
 reduced seed variance. On the held-out test split ($N{=}47$), the
-model achieves F1\,$=0.585$, AUC\,$=0.706$, and a gender TPR gap of
-0.000, indicating generalization beyond the dev set. We additionally
+model achieves F1\,$=0.585$ and AUC\,$=0.706$, exceeding the dev AUC
+and indicating generalization beyond the dev set; male and female
+TPR are numerically equal on this split (0.286 each), though both
+are low in absolute terms and pooled 10-fold cross-validation over
+all 188 participants shows this equality is not stable across folds
+(mean TPR gap~$0.415\pm0.211$). We additionally
 evaluate cross-modal attention fusion and an Equalized Odds fairness
 loss in 10-seed paired Wilcoxon experiments; neither reaches
 significance at this sample size (F1 $p{=}0.496$; TPR-gap
@@ -136,9 +140,13 @@ This paper makes the following contributions:
   and inconclusive results that characterize the limits of these
   techniques on small clinical datasets.
 
-  \item \textbf{Missing-modality robustness:} Modality dropout
-  ($p{=}0.15$ per channel) ensures inference-time performance when
-  one or more modalities are unavailable---a real clinical constraint.
+  \item \textbf{Modality-dropout regularization:} Training-time
+  modality dropout ($p{=}0.15$ per channel) is included as a
+  regularizer motivated by the real clinical constraint that one
+  or more modalities may be unavailable at inference time. We did
+  not evaluate inference-time performance with a modality masked
+  out, so this is reported as a design choice rather than a
+  validated robustness result.
 
   \item \textbf{Convergent explainability:} Attention rollout,
   gradient$\times$input saliency, and occlusion ablation applied
@@ -237,6 +245,19 @@ The training set class
 imbalance ratio (77:30~$\approx$~2.6:1) motivates class-weighted
 cross-entropy with an upper cap of $1.8\times$ to prevent over-correction.
 
+Splits are participant-disjoint: each participant ID appears in
+exactly one of train, dev, or test, so no interview session is
+shared across splits. This matters because a recent large-scale
+reproducibility audit of DAIC-WOZ studies found that of 66 published
+papers reviewed, only 5 met minimal reproducibility standards, and
+identified subject-level data leakage across splits as the most
+common and most performance-inflating flaw \cite{danylenko2026}. We
+verified the absence of participant overlap programmatically across
+train/dev/test and, separately, across the k-fold partitions used
+in Section~\ref{sec:kfold} (each fold is drawn by \texttt{StratifiedKFold}
+over the pooled 188 participants with no repeated IDs across
+train/test within a fold).
+
 \subsection{FER2013 Pre-Training}
 
 FaceAUEncoder weights are pre-trained on FER2013 \cite{goodfellow2015}
@@ -252,11 +273,11 @@ raw face video.
 
 \subsection{Facial Action Units (Face)}
 
-OpenFace CLNF \cite{ekman1978} extracts 20 Action Unit (AU) channels
+OpenFace CLNF \cite{baltrusaitis2016} extracts 20 Action Unit (AU) channels
 per frame: 14~continuous AU intensities ($r$ suffix) and 6~binary
 presence indicators ($c$ suffix), including AU04 (Brow Lowerer),
 AU15 (Lip Corner Depressor), and AU17 (Chin Raiser)---FACS units
-validated as depression affect markers. Frames with confidence
+\cite{ekman1978} validated as depression affect markers. Frames with confidence
 $<0.5$ are excluded; remaining frames are z-score normalized
 per channel and uniformly sampled to $T_f=200$ steps.
 Output shape: $\mathbf{X}_\text{face}\in\mathbb{R}^{N\times200\times20}$.
@@ -409,7 +430,18 @@ video capture or audio recording fails. Total parameters: 592,227.
 where $\mathbf{w}$ are class weights (capped at $1.8\times$),
 $\lambda_s=0.3$, $\lambda_y=0.2$. Auxiliary terms are linearly
 warmed up from 0 over epochs~1--15 to ensure the binary head
-stabilizes before multi-task gradients become active.
+stabilizes before multi-task gradients become active. Loss weights
+($\lambda_s$, $\lambda_y$, $\lambda_f$), dropout rates, and warmup
+schedules were selected by a small manual search over
+$\{0.1,0.2,0.3,0.5\}$ (auxiliary weights) and
+$\{0.3,0.4,0.5,0.6\}$ (dropout) on the dev split only, guided by
+dev macro-F1; the train and test splits were never used for this
+selection. We report the single configuration selected this way
+rather than a full grid, and note that dev-set-guided selection
+on $N{=}34$ carries a risk of mild optimistic bias in the reported
+dev metrics---a limitation shared with the vast majority of
+small-clinical-dataset studies and mitigated here by the
+held-out test-split evaluation (Table~\ref{tab:sota}).
 
 \subsection{Equalized Odds Fairness Loss}
 
@@ -470,7 +502,9 @@ modality subsets, preserving identical encoders, attention mechanism,
 classifier, and optimizer. Each configuration is trained over five
 random seeds; we report mean$\pm$std AUC and macro-F1, bootstrap
 $\text{CI}_{95\%}$ (2,000~resamples), and paired bootstrap significance.
-Table~\ref{tab:ablation} and Fig.~\ref{fig:ablation} summarize results.
+The five random seeds used throughout this ablation are
+$\{42, 1, 7, 123, 2024\}$. Table~\ref{tab:ablation} and
+Fig.~\ref{fig:ablation} summarize results.
 
 \begin{table}[t]
 \centering
@@ -509,12 +543,13 @@ achieves F1~$=0.629\pm0.021$,
 a validated $+0.022$ improvement over the single-task tri-modal baseline
 ($0.607\pm0.063$). The reduced standard deviation ($\pm0.021$
 vs.\ $\pm0.063$) indicates increased training stability from multi-task
-regularization. Paired bootstrap test (proposed vs.\ baseline AUC):
-$p=0.859$---not significant at $\alpha=0.05$, expected given $N=34$.
-The F1 improvement is consistent across all five seeds
-(range: 0.598--0.662, Fig.~\ref{fig:seeds}), providing seed-level
+regularization. We did not run a paired significance test for this
+specific comparison; the evidence for the improvement is the consistency
+of the gain across all five seeds
+(range: 0.598--0.662, Fig.~\ref{fig:seeds}), which provides seed-level
 evidence of genuine signal rather than a single lucky draw
-\cite{bouthillier2021}. Fig.~\ref{fig:p7p8} summarizes the mean-level
+\cite{bouthillier2021}, though we stop short of a formal significance
+claim. Fig.~\ref{fig:p7p8} summarizes the mean-level
 comparison between the two models.
 
 \begin{figure}[t]
@@ -602,6 +637,60 @@ attention weights for clinical auditing, which concatenation does not
 provide. Definitive superiority claims require a substantially larger
 paired-seed study or a larger dataset.
 
+\subsection{Pooled 10-Fold Cross-Validation}
+\label{sec:kfold}
+
+The headline metrics above come from the single fixed AVEC-2017
+split (train=107 / dev=34 / test=47). A single split on $N{=}34$--$47$
+has limited statistical reliability, and reviewers have rightly
+flagged this as a source of uncertainty. To obtain a larger effective
+held-out sample, we pool all 188 labeled DAIC-WOZ participants
+(train+dev+test) and run stratified $k$-fold cross-validation with
+$k{=}5$ under two independent partition seeds ($\{42,7\}$), giving
+10~fold-runs in total, each with an internal 15\% validation slice
+carved from the training portion for early stopping and threshold
+selection (identical training protocol to
+Section~\ref{sec:training}). Test-origin participants contribute
+only binary label, PHQ-8 total score, and gender (no per-symptom
+items in the public release), so the symptom-classification loss
+term is masked for those samples during cross-validation; all 188
+participants contribute to the binary and PHQ-8-score losses.
+
+\begin{table}[t]
+\centering
+\renewcommand{\arraystretch}{1.15}
+\caption{Pooled 10-Fold Cross-Validation ($N{=}188$, 2~partition seeds
+$\times$ 5~folds)}
+\label{tab:kfold}
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric} & \textbf{Mean $\pm$ Std (across 10 folds)} \\
+\midrule
+Macro-F1  & $0.554 \pm 0.093$ \\
+AUC-ROC   & $0.612 \pm 0.120$ \\
+Accuracy  & $0.657 \pm 0.058$ \\
+TPR gap (male$-$female) & $0.415 \pm 0.211$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The cross-validated estimates are lower than the fixed-split dev/test
+numbers reported above (F1 $0.554$ vs.\ $0.629$/$0.585$; AUC $0.612$
+vs.\ $0.658$/$0.706$), and the fold-to-fold spread is substantial
+(F1 std $0.093$, AUC std $0.120$). Most notably, the fairness picture
+changes: the mean TPR gap across folds is $0.415\pm0.211$, and in
+7~of the 10~folds the model achieves $\text{TPR}_\text{female}=0$
+(no depressed female participant in that fold's test partition is
+correctly flagged), compared to the single-split test result of
+TPR~gap\,$=0.000$ reported in Table~\ref{tab:sota}. We interpret this
+as evidence that the fixed-split fairness result is not a stable
+property of the model but an artifact of one particular
+train/dev/test partition; the cross-validated estimate is the more
+trustworthy characterization of both overall performance and fairness
+behavior on this dataset at this sample size. We report both sets of
+numbers---fixed-split and cross-validated---rather than presenting
+only the more favorable one.
+
 % ============================================================
 \section{Comparison with Published Methods}
 \label{sec:sota}
@@ -624,10 +713,11 @@ Shen et al.\ \cite{shen2022}             & A+V+T & Dev (ext.) & --- & 0.83 & ---
 \textbf{This work} & \textbf{F+A+T} & \textbf{Dev}
   & $\mathbf{0.629\pm0.021}$ & $0.658\pm0.029$ & 0.286 \\
 \textbf{This work} & \textbf{F+A+T} & \textbf{Test ($N{=}47$)}
-  & $\mathbf{0.585}$ & $\mathbf{0.706}$ & $\mathbf{0.000}$ \\
+  & $\mathbf{0.585}$ & $\mathbf{0.706}$ & $\mathbf{0.000}^{\dagger}$ \\
 \bottomrule
 \multicolumn{6}{l}{\scriptsize A=Audio, V=Video, T=Text, F=Face AUs. `---' = not reported by authors.} \\
 \multicolumn{6}{l}{\scriptsize Shen et al.\ use an extended DAIC-WOZ split, not directly comparable to Dev/Test above.} \\
+\multicolumn{6}{l}{\scriptsize $^{\dagger}$Equal but low TPR (0.286 both groups); 10-fold CV gives $0.415\pm0.211$ (Sec.~\ref{sec:kfold}).} \\
 \end{tabular}
 \end{table}
 
@@ -641,8 +731,10 @@ Shen et al.\ \cite{shen2022}             & A+V+T & Dev (ext.) & --- & 0.83 & ---
   \label{fig:sota}
 \end{figure}
 
-Our system achieves dev F1\,$=0.629\pm0.021$, outperforming four older
-baselines (AVEC-2017 audio/text, Williamson, Gong \& Poellabauer) on F1.
+Our system achieves dev F1\,$=0.629\pm0.021$, outperforming three older
+baselines (AVEC-2017 audio, AVEC-2017 text, Williamson et al.) on F1,
+while remaining below Gong \& Poellabauer's topic-modeling result
+(F1\,$=0.70$); see Table~\ref{tab:sota} for the full comparison.
 More recent transformer-based methods \cite{ray2019,shen2022} achieve
 higher AUC (0.80--0.83) using pre-trained language models and larger
 GPU-trained architectures; our system does not claim to surpass these.
@@ -658,9 +750,18 @@ AUC of $0.658\pm0.029$, indicating the model generalizes rather than
 overfitting to the dev set. The test F1 drop ($0.629\to0.585$) is
 expected: the decision threshold is derived from the dev set and may not
 optimally calibrate for the test distribution. The test-set gender
-fairness audit reveals a TPR gap of~0.000---both male and female
-depressed participants are detected at identical rates---an encouraging
-fairness result on the unseen split.
+fairness audit reveals a TPR gap of~0.000: male and female depressed
+participants are detected at \emph{equal} rates, but that rate is only
+$0.286$ for both groups (4/14 depressed test participants correctly
+flagged)---the model is missing most depressed participants in this
+split \emph{regardless of gender}, so equal TPR here reflects equally
+poor sensitivity rather than a fairness success. Pooled 10-fold
+cross-validation (Section~\ref{sec:kfold}) confirms this single-split
+gap of~0.000 is not representative: across 188 participants the mean
+TPR gap is $0.415\pm0.211$, with several folds showing $\text{TPR}_\text{female}=0$
+entirely. We therefore do not treat the fixed-split TPR gap as
+evidence of fairness and report the cross-validated estimate as the
+more reliable characterization.
 
 % ============================================================
 \section{Fairness Audit}
@@ -802,13 +903,20 @@ than spurious correlations.
 \subsection{Limitations}
 
 \textbf{Small dev set ($N{=}34$):} The official dev split provides
-insufficient statistical power to establish AUC superiority of
-tri-modal over audio-only ($p=0.859$). We additionally report
-test-split results ($N{=}47$): F1\,$=0.585$, AUC\,$=0.706$,
-TPR~gap\,$=0.000$ (see Table~\ref{tab:sota}). The test AUC exceeds
+insufficient statistical power to establish a significant AUC
+difference between tri-modal and audio-only configurations
+(paired bootstrap, 2,000 resamples, $p=0.859$)---audio-only is
+numerically higher (Table~\ref{tab:ablation}), but the gap is not
+distinguishable from sampling noise at this sample size. We
+additionally report test-split results ($N{=}47$): F1\,$=0.585$,
+AUC\,$=0.706$ (see Table~\ref{tab:sota}). The test AUC exceeds
 the dev AUC, providing evidence of generalization. The F1 decrease
 ($0.629\to0.585$) is attributable to threshold mismatch between
-the dev-tuned threshold and the test distribution.
+the dev-tuned threshold and the test distribution. Pooled 10-fold
+cross-validation over all 188 participants
+(Section~\ref{sec:kfold}) corroborates that a single fixed split is
+an unreliable estimator at this sample size: F1 and TPR-gap both
+vary substantially across folds.
 
 \textbf{Audio-only AUC exceeds tri-modal AUC:} Table~\ref{tab:ablation}
 shows that audio-only achieves AUC~$=0.721\pm0.013$ vs.\
@@ -878,9 +986,15 @@ significantly reduce the gender TPR gap at this sample size
 ($p{=}0.813$, wins 3/10~seeds). We report both as negative/inconclusive
 findings that characterize the limits of these techniques on small
 clinical cohorts, rather than reframing them as successes.
-Test-split evaluation ($N{=}47$) yields F1\,$=0.585$,
-AUC\,$=0.706$, and TPR~gap\,$=0.000$, providing evidence of
-generalization beyond the dev set. Modality dropout ($p{=}0.15$)
+Test-split evaluation ($N{=}47$) yields F1\,$=0.585$ and
+AUC\,$=0.706$, exceeding the dev AUC and providing evidence of
+generalization beyond the dev set. The test-split TPR gap is
+nominally~0.000, but pooled 10-fold cross-validation across all
+188 participants (Section~\ref{sec:kfold}) shows this single-split
+result is not stable (mean TPR gap $0.415\pm0.211$ across folds),
+underscoring that fixed-split fairness metrics on $N{<}50$ cohorts
+should be corroborated with resampling before being reported as
+findings. Modality dropout ($p{=}0.15$)
 and three convergent explainability methods (attention rollout,
 gradient$\times$input saliency, occlusion) complete the framework.
 Future work includes GPU training, BERT text encoding, and
@@ -910,6 +1024,19 @@ configurations, and result artifacts (excluding the restricted raw
 dataset) are available at
 \url{https://github.com/DevMursLab/Thesis}.
 
+\subsection*{Reproducibility Details}
+All experiments use Python~3.10, PyTorch~$\geq$2.0, scikit-learn~$\geq$1.3,
+and librosa~$\geq$0.10 (exact pinned versions in the repository's
+\texttt{requirements.txt}). The 5-seed ablation and multi-task
+experiments use seeds $\{42, 1, 7, 123, 2024\}$; the 10-seed fairness
+and attention-vs-concatenation experiments use seeds
+$\{42,1,7,13,21,100,2024,7777,555,88\}$. \texttt{torch.manual\_seed}
+and \texttt{numpy.random.seed} are set identically per run; exact
+bitwise reproducibility across GPU/CPU hardware is not guaranteed
+due to non-deterministic CUDA kernels, though result variation across
+reruns at fixed seed was observed to be negligible relative to the
+inter-seed variance reported throughout this paper.
+
 % ============================================================
 \section*{Author Contributions}
 Md.~Mursalin: conceptualization, methodology, software, formal
@@ -925,6 +1052,12 @@ interests or personal relationships that could have appeared to
 influence the work reported in this paper.
 
 % ============================================================
+\section*{Funding Statement}
+This research received no external grant funding from any
+funding agency in the public, commercial, or not-for-profit
+sectors.
+
+% ============================================================
 \section*{Acknowledgment}
 The DAIC-WOZ corpus was provided by the University of Southern
 California Institute for Creative Technologies under a restricted-data
@@ -935,7 +1068,7 @@ The authors thank the reviewers for constructive feedback.
 \IEEEtriggeratref{14}
 \bibliographystyle{IEEEtran}
 
-\begin{thebibliography}{17}
+\begin{thebibliography}{19}
 
 \bibitem{who2023}
 World Health Organization, ``Depressive disorder (depression),''
@@ -1047,6 +1180,18 @@ L.-P.~Morency, and R.~Salakhutdinov,
 sequences,'' in \textit{Proc. 57th Annu. Meeting Assoc.
 Comput. Linguistics (ACL)}, Florence, Italy, 2019,
 pp.~6558--6569.
+
+\bibitem{baltrusaitis2016}
+T.~Baltru\v{s}aitis, P.~Robinson, and L.-P.~Morency,
+``OpenFace: An open source facial behavior analysis toolkit,''
+in \textit{Proc. IEEE Winter Conf. Appl. Comput. Vis. (WACV)},
+Lake Placid, NY, USA, 2016, pp.~1--10.
+
+\bibitem{danylenko2026}
+I.~Danylenko and O.~Unold,
+``Common pitfalls and recommendations for use of machine
+learning in depression severity estimation: DAIC-WOZ study,''
+\textit{Appl. Sci.}, vol.~16, no.~1, p.~422, 2026.
 
 \end{thebibliography}
 
