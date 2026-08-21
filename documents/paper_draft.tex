@@ -59,14 +59,14 @@ promising observed result is symptom-level \emph{multi-task
 learning}---jointly predicting the binary label, PHQ-8 score, and
 eight symptom items---which raises mean macro-F1 from $0.607\pm0.063$
 to $0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
-reduced seed variance; however, a paired Wilcoxon test matching each
-multi-task seed against the single-task baseline run from the same
-seed does not reach significance ($p{=}0.625$, multi-task wins
-3/5~pairs; at $n{=}5$ this test cannot reach $p<0.05$ under any
-outcome, so this result is at best inconclusive rather than a
-disconfirmation), so we report this as an encouraging but statistically
-unconfirmed direction rather than a validated headline result. On
-the held-out test split ($N{=}47$), the
+reduced seed variance. A paired Wilcoxon test matching each multi-task
+seed against the single-task baseline run from the same seed does not
+reach significance ($p{=}0.625$, multi-task wins 3/5~pairs). At
+$n{=}5$ this test cannot reach $p<0.05$ under any outcome, so the
+result is at best inconclusive rather than a disconfirmation. We
+therefore report this as an encouraging but statistically unconfirmed
+direction, not a validated headline result. On the held-out test
+split ($N{=}47$), the
 model achieves F1\,$=0.585$ and AUC\,$=0.706$, exceeding the dev AUC
 and indicating generalization beyond the dev set; male and female
 TPR are numerically equal on this split (0.286 each), though both
@@ -81,11 +81,13 @@ genuinely underpowered for these effect sizes rather than showing
 true null effects. We report both as transparent negative/inconclusive
 findings rather than reframing them as successes. Three convergent
 explainability methods (attention rollout, gradient$\times$input
-saliency, occlusion ablation) independently identify audio and AU04
-(Brow Lowerer) as the primary predictive cues, consistent with
-established clinical markers of depressed affect. Our contribution is
-methodological rigor and transparent reporting---including honest
-limitations---rather than state-of-the-art performance.
+saliency, occlusion ablation) independently identify audio as the
+most informative modality on the dev split, and gradient saliency
+places the clinically-established marker AU04 (Brow Lowerer) within
+its top-5 attributed facial features, though not as the single
+top-ranked feature. Our contribution is methodological rigor and
+transparent reporting---including honest limitations---rather than
+state-of-the-art performance.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -418,18 +420,25 @@ for eight 4-class symptom ordinal predictions.
 
 \subsection{Modality Dropout}
 
-During training, each modality embedding is independently zeroed with
-probability $p=0.15$:
+During training, each modality is independently zeroed with
+probability $p=0.15$, with one Bernoulli draw per modality per
+mini-batch (i.e., the drop/keep decision is shared across all
+examples in a batch, not sampled independently per example):
 
 \begin{equation}
 \mathbf{h}_m^\prime =
-  \mathbf{h}_m \cdot \mathbf{1}[\operatorname{Bernoulli}(1-p)=1]
+  \mathbf{h}_m \cdot \mathbf{1}[\operatorname{Bernoulli}(1-p)=1]_{\text{per batch}}
 \label{eq:moddrop}
 \end{equation}
 
-This forces cross-modal attention to function robustly when one
-channel is absent---a real clinical deployment constraint when
-video capture or audio recording fails. Total parameters: 592,227.
+This is intended to encourage cross-modal attention to function when
+one channel is absent---a real clinical deployment constraint when
+video capture or audio recording fails---though because masking is
+batch-level rather than per-example, it is a weaker and coarser
+regularizer than fully independent per-example modality dropout would
+be; this is consistent with, and may partly explain, the mixed (not
+uniformly graceful) test-time robustness result in
+Section~\ref{sec:robustness}. Total parameters: 592,227.
 
 % ============================================================
 \section{Training Objective}
@@ -927,15 +936,22 @@ evidence than any single technique alone \cite{abnar2020}.
 
 \textbf{Cross-modal attention rollout} \cite{abnar2020}:
 Audio receives the highest mean attention weight~(0.39), followed
-by text~(0.33) and face~(0.28). This is consistent with the
+by text~(0.31) and face~(0.30). This is consistent with the
 ablation result that audio is the strongest single modality.
 
 \textbf{Gradient\,$\times$\,input saliency} \cite{shrikumar2017}:
 $\|\nabla_{\mathbf{x}} f \odot \mathbf{x}\|_1$ attributed over
-20~AU channels identifies \textbf{AU04 (Brow Lowerer)} as the
-top-ranked facial feature---independently consistent with Ekman's
-FACS literature on depressed affect \cite{ekman1978}, obtained
-without any clinical supervision.
+20~AU channels ranks \textbf{AU20 (Lip Stretcher)} highest
+(importance~$0.130$), followed by AU06 (Cheek Raiser, $0.120$), AU05
+(Upper Lid Raiser, $0.120$), AU25 (Lips Part, $0.085$), and
+\textbf{AU04 (Brow Lowerer, $0.079$)} fifth. AU04 is a FACS unit
+established in the clinical literature as a depressed-affect marker
+\cite{ekman1978} and does appear within the top~5 attributed
+channels, but it is not the single top-ranked feature by this
+method---AU20, the actual top-ranked channel, does not have the same
+established link to depressed affect in the FACS literature we
+reviewed. We report the full ranking rather than only the clinically
+convenient part of it.
 
 \textbf{Leave-one-modality-out AUC drop}: Removing audio causes the
 largest AUC decrease ($-0.03$) on the dev split, consistent with
@@ -950,11 +966,17 @@ to be distinct properties, not interchangeable evidence of a single
 modality's importance.
 
 All three methods consistently rank audio as the most informative
-modality \emph{on the dev split} and implicate AU04 for facial
-attribution---convergent dev-split evidence that the model learned
-clinically plausible features rather than spurious correlations,
-though Section~\ref{sec:robustness} shows this ranking does not fully
-carry over to test-time necessity.
+modality \emph{on the dev split}, and gradient saliency places the
+clinically-established marker AU04 within its top~5 attributed facial
+channels, though not as the single top-ranked feature (AU20 ranks
+higher and lacks the same established clinical link). We report this
+as partial, not clean, convergence with clinical priors---the
+attribution evidence is directionally plausible but does not single
+out AU04 as decisively as our earlier framing suggested. Convergence
+across independent methods is still stronger evidence than any single
+technique alone, and Section~\ref{sec:robustness} further shows the
+dev-split modality ranking does not fully carry over to test-time
+necessity.
 
 % ============================================================
 \section{Additional Validation Experiments}
@@ -1209,9 +1231,12 @@ Equalized Odds loss is integrated into the objective function---not
 applied post-hoc---making fairness a first-class design constraint,
 though our 10-seed evaluation shows it is insufficient for significant
 bias reduction at $N{=}34$, motivating larger-scale replication.
-Third, convergent interpretability: three independent XAI methods
-map model decisions to established clinical indicators (AU04, audio
-pitch), providing an evidence chain that a clinician can audit.
+Third, interpretability: three independent XAI methods converge on
+audio as the most informative dev-split modality, and gradient
+saliency places the clinically-established facial marker AU04 within
+its top~5 attributed channels (though not ranked first), providing a
+partial evidence chain a clinician can audit rather than a fully
+clean one.
 
 % ============================================================
 \section{Conclusion}
