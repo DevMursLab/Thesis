@@ -9,8 +9,17 @@ never validated with an actual inference-time-masking experiment.
 This script closes that gap: it zeros out each modality (one at a time)
 at TEST time on the trained multitask model and measures the resulting
 F1/AUC drop on both dev and the held-out test split, compared to the
-all-modalities-present baseline. This produces a real, reportable
-missing-modality robustness result (or shows the claim does not hold).
+all-modalities-present baseline.
+
+Threshold protocol (IMPORTANT): for every masking condition, the decision
+threshold is selected on the DEV split's probabilities only, then applied
+FIXED to the TEST split -- matching the paper's stated protocol ("model
+selection and threshold tuning are performed on the dev split only; the
+test split is used exclusively for final held-out evaluation") and the
+convention already used by src/experiments/test_evaluation.py. An earlier
+version of this script incorrectly re-searched the threshold on the test
+labels themselves for the test-split numbers; that is data leakage and has
+been fixed here.
 
 Run:
     python -m src.experiments.modality_robustness
@@ -74,7 +83,7 @@ def best_threshold(y_true, probs):
 
 
 @torch.no_grad()
-def eval_with_mask(model, Xf, Xa, Xt, y, device, mask_modality=None):
+def get_probs(model, Xf, Xa, Xt, device, mask_modality=None):
     """mask_modality: None (no masking), or one of 'face','audio','text'."""
     Xf_, Xa_, Xt_ = Xf.copy(), Xa.copy(), Xt.copy()
     if mask_modality == "face":
@@ -88,10 +97,11 @@ def eval_with_mask(model, Xf, Xa, Xt, y, device, mask_modality=None):
     Xa_t = torch.tensor(Xa_).to(device)
     Xt_t = torch.tensor(Xt_).to(device)
     logits, _, _ = model(Xf_t, Xa_t, Xt_t)
-    probs = torch.softmax(logits, 1)[:, 1].cpu().numpy()
+    return torch.softmax(logits, 1)[:, 1].cpu().numpy()
 
+
+def score(y, probs, thr):
     auc = roc_auc_score(y, probs) if len(np.unique(y)) > 1 else float("nan")
-    thr = best_threshold(y, probs)
     preds = (probs >= thr).astype(int)
     f1 = f1_score(y, preds, average="macro", zero_division=0)
     acc = (preds == y).mean()
@@ -99,20 +109,17 @@ def eval_with_mask(model, Xf, Xa, Xt, y, device, mask_modality=None):
             "acc": round(float(acc), 4), "threshold": round(float(thr), 4)}
 
 
-def run_split(name, Xf, Xa, Xt, y, model, device):
-    print(f"\n--- {name} split (N={len(y)}) ---")
-    results = {}
-    baseline = eval_with_mask(model, Xf, Xa, Xt, y, device, mask_modality=None)
-    results["all_modalities"] = baseline
-    print(f"  {'all modalities':16s}  F1={baseline['f1']:.3f}  AUC={baseline['auc']:.3f}")
-    for m in ["face", "audio", "text"]:
-        r = eval_with_mask(model, Xf, Xa, Xt, y, device, mask_modality=m)
-        r["f1_drop"]  = round(baseline["f1"] - r["f1"], 4)
-        r["auc_drop"] = round(baseline["auc"] - r["auc"], 4)
-        results[f"missing_{m}"] = r
-        print(f"  missing {m:8s}      F1={r['f1']:.3f} (d={r['f1_drop']:+.3f})  "
-              f"AUC={r['auc']:.3f} (d={r['auc_drop']:+.3f})")
-    return results
+def run_condition(mask_name, model, device,
+                   Xf_dv, Xa_dv, Xt_dv, y_dv,
+                   Xf_te, Xa_te, Xt_te, y_te):
+    """Threshold is selected on DEV only, then applied fixed to TEST."""
+    dev_probs = get_probs(model, Xf_dv, Xa_dv, Xt_dv, device, mask_modality=mask_name)
+    thr = best_threshold(y_dv, dev_probs)
+    dev_result = score(y_dv, dev_probs, thr)
+
+    test_probs = get_probs(model, Xf_te, Xa_te, Xt_te, device, mask_modality=mask_name)
+    test_result = score(y_te, test_probs, thr)   # same dev-derived threshold, no leakage
+    return dev_result, test_result
 
 
 def main():
@@ -122,15 +129,37 @@ def main():
     Xf_dv, Xa_dv, Xt_dv, y_dv = load_dev()
     Xf_te, Xa_te, Xt_te, y_te = load_test()
 
-    dev_results  = run_split("Dev",  Xf_dv, Xa_dv, Xt_dv, y_dv, model, device)
-    test_results = run_split("Test", Xf_te, Xa_te, Xt_te, y_te, model, device)
+    dev_results, test_results = {}, {}
+    conditions = [("all_modalities", None), ("missing_face", "face"),
+                  ("missing_audio", "audio"), ("missing_text", "text")]
+
+    print(f"\n--- Dev (N={len(y_dv)}) / Test (N={len(y_te)}) "
+          f"[threshold always dev-derived, applied fixed to test] ---")
+    for label, mask in conditions:
+        dev_r, test_r = run_condition(mask, model, device,
+                                       Xf_dv, Xa_dv, Xt_dv, y_dv,
+                                       Xf_te, Xa_te, Xt_te, y_te)
+        dev_results[label] = dev_r
+        test_results[label] = test_r
+        print(f"  {label:16s}  dev F1={dev_r['f1']:.3f} AUC={dev_r['auc']:.3f}  |  "
+              f"test F1={test_r['f1']:.3f} AUC={test_r['auc']:.3f} "
+              f"(thr={dev_r['threshold']:.2f})")
+
+    baseline_dev, baseline_test = dev_results["all_modalities"], test_results["all_modalities"]
+    for label in ["missing_face", "missing_audio", "missing_text"]:
+        dev_results[label]["f1_drop"]  = round(baseline_dev["f1"] - dev_results[label]["f1"], 4)
+        dev_results[label]["auc_drop"] = round(baseline_dev["auc"] - dev_results[label]["auc"], 4)
+        test_results[label]["f1_drop"]  = round(baseline_test["f1"] - test_results[label]["f1"], 4)
+        test_results[label]["auc_drop"] = round(baseline_test["auc"] - test_results[label]["auc"], 4)
 
     report = {
         "analysis": "test-time missing-modality robustness "
                     "(zero-masking one modality at inference)",
         "note": "Model trained WITH modality-dropout(p=0.15) as a regularizer; "
                 "this experiment validates whether that regularizer actually "
-                "confers inference-time robustness to a missing modality.",
+                "confers inference-time robustness to a missing modality. "
+                "Threshold is selected on dev only (per masking condition) and "
+                "applied fixed to test -- no test-label leakage.",
         "dev": dev_results,
         "test": test_results,
     }

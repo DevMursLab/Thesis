@@ -1,6 +1,18 @@
 # Thesis Defense Analysis — Tri-Modal Depression Risk Detection
 **PhD/IEEE Level | Prepared for Viva Examination & Reviewer Criticism**
 
+> **Read this first:** this document was substantially rewritten to match the
+> current `documents/paper_draft.tex`. Earlier drafts of this file described
+> the **single-task tri-modal model** (AUC 0.698, F1 0.607) as the headline
+> result and marked several analyses as "planned for Phase 8." That is no
+> longer accurate. The paper's actual proposed/headline model is the
+> **multi-task model** (dev AUC 0.658±0.029, F1 0.629±0.021), and five new
+> validation experiments (symptom-level breakdown, missing-modality
+> robustness, internal audio-feature ablation, calibration/error analysis,
+> and a formal multi-task significance test) have since been completed and
+> added to the paper. If you memorize only one number from the old version
+> of this document, assume it is now wrong — use Part VII below instead.
+
 ---
 
 ## Part I — Research Novelty Analysis
@@ -9,23 +21,33 @@
 
 **Claim 1: Controlled-Variable Ablation Design**
 
-The central methodological novelty is not the attention mechanism alone — it is the *experimental design*. Prior multimodal depression papers (Gong & Poellabauer 2017; Williamson et al. 2016) report tri-modal results without ablating individual modalities with the *same architecture*. They change the model when they change the modality, making it impossible to attribute performance differences to the modality vs. the model.
+The central methodological novelty is not any single technique — it is the *experimental design*. Prior multimodal depression papers (Gong & Poellabauer 2017; Williamson et al. 2016) report tri-modal results without ablating individual modalities with the *same architecture*. They change the model when they change the modality, making it impossible to attribute performance differences to the modality vs. the model.
 
 `ConfigurableFusionModel` instantiates all 7 configurations from a single class: identical encoders (embed_dim=64), identical attention mechanism, identical classifier, identical optimizer. A performance difference between audio-only (AUC=0.721) and face-only (AUC=0.513) is attributable to the modality signal, not to architectural confounds. This is what an IEEE reviewer means by a "controlled ablation."
 
-**Claim 2: Equalized Odds, Not Equalized Opportunity**
+**Claim 2: Symptom-Level Multi-Task Learning — the paper's most promising result, honestly reported as not statistically confirmed**
+
+Jointly predicting the binary label, PHQ-8 total score, and all eight PHQ-8 symptom items raises mean macro-F1 from 0.607±0.063 (single-task tri-modal baseline) to 0.629±0.021 (proposed multi-task model), with markedly reduced seed variance. **This is the paper's central, title-bearing contribution** ("Multi-Task Learning for Tri-Modal Depression Detection").
+
+However: we ran a paired Wilcoxon signed-rank test matching each multi-task seed against the single-task run from the *same* seed, and it does **not** reach significance (p=0.625, n=5, multi-task wins only 3/5 pairs). Critically, at n=5 an exact two-sided Wilcoxon test cannot reach p<0.05 under *any* possible outcome (best case: p=0.0625) — so this test was structurally underpowered to confirm the effect regardless of its true size. We report this honestly rather than hiding it, and it is the single most important thing to be ready to discuss in the viva (see Q1–Q3 below).
+
+**Claim 3: Equalized Odds, Not Equalized Opportunity**
 
 Hardt et al. (NeurIPS 2016) show these are distinct criteria. Equal Opportunity (TPR gap only) can be satisfied by a model that predicts positive for everyone — trivially equalizing TPR while creating catastrophic FPR inequality. Equalized Odds requires both TPR and FPR to be equal across groups.
 
-The training loss `L_fairness = (TPR_M − TPR_F)² + (FPR_M − FPR_F)²` penalizes both failures simultaneously. This prevented the all-positive collapse that destroyed the first 7.8M-parameter model. The theoretical and practical justification is the same: a model that correctly catches depression in everyone is not fair if it also falsely flags everyone.
+The training loss `L_fairness = (TPR_M − TPR_F)² + (FPR_M − FPR_F)²` penalizes both failures simultaneously. A 10-seed before/after comparison (Section IX-B of the paper) shows this loss does **not** significantly reduce the TPR gap at N=34 (Wilcoxon p=0.813, fairness wins only 3/10 seeds vs. the no-fairness baseline's 4/10) — another honestly-reported negative result, not hidden or reframed.
 
-**Claim 3: Multi-Seed Bootstrap CI as Minimum Credible Evidence on N=34**
+**Claim 4: Multi-Seed, Multi-Split, Multi-Method Statistical Rigor**
 
-DAIC-WOZ official dev set is 34 participants. A single training run on N=34 has no statistical meaning. The literature frequently reports single-run results on this dataset — which is not scientific criticism, it is just the practical norm when GPU is limited. This work trains each of 7 configurations 5 times, reports mean ± std AUC, and tests significance with paired bootstrap (2,000 resamples). The honest finding — overlapping CIs, p=0.859 — is *more publishable*, not less, because it is reproducible and self-aware.
+DAIC-WOZ official dev set is 34 participants. A single training run on N=34 has no statistical meaning. This work trains every configuration across 5 or 10 seeds (mean±std, paired bootstrap/Wilcoxon), reports bootstrap 95% CIs, adds a pooled 10-fold cross-validation over all 188 participants (Section VIII-C) to obtain a larger effective held-out sample, and adds effect-size/power analysis (Cohen's d, post-hoc power) for the two 10-seed comparisons. The honest findings — overlapping CIs, non-significant p-values across nearly every design choice tested — are *more publishable*, not less, because they are reproducible, self-aware, and consistent with what a 2025–2026 reproducibility literature review of DAIC-WOZ (see Claim 5) predicts should happen at this sample size.
 
-**Claim 4: Convergent XAI**
+**Claim 5: Positioning Against the DAIC-WOZ Reproducibility Crisis**
 
-Three mechanistically independent methods (attention rollout, gradient × input, leave-one-out occlusion) independently identify the same top modality (audio) and the same top face feature (AU04). Convergence across independent methods is a stronger evidential standard than any single method alone.
+A 2026 systematic review (Danylenko & Unold, *Applied Sciences*) examined DAIC-WOZ papers reporting MAE and found only 5 of 66 met minimal reproducibility standards, identifying subject-level data leakage as the dominant inflating factor. A separate 2025 ICMI reproducibility study found that DAIC-WOZ classifiers may largely learn *disorder-general* distress cues rather than markers specific to Major Depressive Disorder. This work responds to both concerns directly: (a) splits are verified participant-disjoint (no leakage) at both the fixed-split and k-fold level; (b) the multi-task symptom-level breakdown (Section VIII-A) directly tests the disorder-general-cues concern by checking whether presence/absence accuracy varies across the 8 PHQ-8 symptoms — it does (macro-F1 spread 0.209–0.424), though the best-predicted symptoms are still the most generic ones, so this is reported as *partial*, not clean, evidence against the concern.
+
+**Claim 6: Convergent XAI, With an Important Caveat**
+
+Three mechanistically independent methods (attention rollout, gradient × input, leave-one-out occlusion) independently identify the same top modality (audio) and the same top face feature (AU04) — but only **on the dev split**. A new test-time missing-modality-masking experiment (Section VIII-B) shows this dev-split ranking does *not* fully predict test-time necessity: masking audio does not hurt test performance, while masking text collapses test AUC from 0.706 to 0.435. Convergence across independent methods is still a stronger evidential standard than any single method alone, but "most attended on dev" and "most necessary at test time" are now shown by this paper's own data to be different questions. Be ready to explain this distinction — it is a genuinely interesting finding, not a contradiction to hide.
 
 ---
 
@@ -34,14 +56,18 @@ Three mechanistically independent methods (attention rollout, gradient × input,
 | Gap | Prior Work | This Work |
 |-----|-----------|-----------|
 | No controlled ablation | Different models per modality subset | Single `ConfigurableFusionModel` class |
-| Fairness not addressed | No fairness constraints in AVEC winners | Equalized Odds loss, 4-criterion audit |
-| Single-run results | Most papers report 1 seed | 5-seed, mean±std, paired bootstrap |
-| Black-box fusion | Concatenate → classify | Attention rollout + gradient saliency convergent |
-| TPR-only fairness | Equalized Opportunity (NeurIPS 2016) | Equalized Odds (prevents all-positive collapse) |
+| Fairness not addressed | No fairness constraints in AVEC winners | Equalized Odds loss, 4-criterion audit, honestly reported as not significant at N=34 |
+| Single-run results | Most papers report 1 seed | 5/10-seed, mean±std, paired bootstrap/Wilcoxon, effect size + power analysis |
+| Single fixed split only | Standard practice on DAIC-WOZ | Pooled 10-fold CV over all 188 participants, showing the fixed split's fairness result is not stable |
+| Black-box fusion | Concatenate → classify | Attention rollout + gradient saliency + occlusion, cross-checked against a real test-time masking experiment |
+| Reproducibility unaddressed | Subject leakage common in published work (Danylenko & Unold 2026) | Participant-disjoint splits verified at fixed-split and k-fold level |
+| Disorder-general-cues concern unaddressed | Aggregate binary label only (ICMI 2025 critique) | Symptom-level multi-task breakdown, partial evidence reported honestly |
 
 ---
 
 ## Part II — System Design Decisions
+
+*(Unchanged from earlier drafts — these design-rationale answers remain accurate.)*
 
 ### Why Bi-LSTM, Not Transformer?
 
@@ -54,25 +80,29 @@ Transformer would be correct with 10,000+ samples (full DAIC + AVEC + CMDC combi
 
 ### Why embed_dim=64, Not 256?
 
-The original 7.8M-parameter model (embed_dim=256) memorized 107 training samples by epoch 5 — AUC on dev was 0.49 (random), AUC on train was 1.00. Shrinking to embed_dim=64 (638K params) forces the model to share representational capacity across samples rather than assigning separate capacity to each training point. This is the clinical-small-N equivalent of the bias-variance tradeoff.
-
-Rule of thumb: for robust generalization, the model should have fewer effective parameters than training samples × 5. At N=107: 107 × 5 = 535 effective parameters per layer. 638K total / 10 layers ≈ 63K per layer — still overparameterized but with dropout=0.6 and weight_decay=1e-2, effective capacity is reduced to manageable levels.
+The original 7.8M-parameter model (embed_dim=256) memorized 107 training samples by epoch 5 — AUC on dev was 0.49 (random), AUC on train was 1.00. Shrinking to embed_dim=64 (~592K–638K params across model variants) forces the model to share representational capacity across samples rather than assigning separate capacity to each training point. This is the clinical-small-N equivalent of the bias-variance tradeoff.
 
 ### Why Fairness Warmup (8 epochs)?
 
-Adding `L_fairness` at epoch 0 means the model optimizes demographic parity of a random classifier — gradient noise dominates the fairness signal. By waiting 8 epochs for the classifier to converge to a reasonable solution, the fairness gradient targets a meaningful TPR/FPR gap. This is analogous to learning rate warmup: start with the primary objective, then add the secondary constraint once the primary landscape is stabilized.
+Adding `L_fairness` at epoch 0 means the model optimizes demographic parity of a random classifier — gradient noise dominates the fairness signal. By waiting 8 epochs for the classifier to converge to a reasonable solution, the fairness gradient targets a meaningful TPR/FPR gap. This is analogous to learning rate warmup.
 
 ### Why TF-IDF Instead of BERT?
 
 1. **N=107 training texts:** BERT fine-tuning requires thousands of samples to update the 110M-parameter backbone without catastrophic forgetting.
-2. **Vocabulary restriction to 1,000:** prevents the model from memorizing rare interview-specific phrases. TF-IDF bigrams capture "can't sleep", "feel hopeless" patterns without needing contextualized embeddings.
-3. **Speed:** TF-IDF preprocessing is deterministic and runs in seconds; BERT tokenization + forward pass adds ~2 min/epoch on CPU.
+2. **Vocabulary restriction to 1,000:** prevents the model from memorizing rare interview-specific phrases.
+3. **Speed:** TF-IDF preprocessing is deterministic; BERT adds significant overhead on CPU.
 
-BERT is the correct choice when DAIC-WOZ is combined with AVEC-2016, AVEC-2014, and CMU-MOSI (combined N ≈ 500+).
+BERT is the correct choice when DAIC-WOZ is combined with larger corpora (combined N ≈ 500+).
+
+### Why Modality Dropout, and What Did We Actually Find?
+
+Modality dropout (p=0.15 per channel, training-time only) is included as a regularizer motivated by the clinical constraint that a modality may be missing at deployment. We do **not** just assert this works — Section VIII-B directly tests it with real test-time masking, and the result is mixed: robust to losing face, moderately costly to lose audio, and critically dependent on text (test AUC collapses to 0.435 without it). Be ready to state this as a finding, not a solved problem.
 
 ---
 
 ## Part III — Mathematical & Technical Depth
+
+*(Unchanged — still accurate.)*
 
 ### Cross-Modal Attention: Full Derivation
 
@@ -95,53 +125,34 @@ $$\tilde{\mathbf{h}}_m = \text{LayerNorm}(\mathbf{c}_m + \mathbf{h}_m)$$
 Fused representation:
 $$\mathbf{z} = [\tilde{\mathbf{h}}_f \| \tilde{\mathbf{h}}_a \| \tilde{\mathbf{h}}_t] \in \mathbb{R}^{3d = 192}$$
 
-**Interpretation:** $\boldsymbol{\alpha}_m$ tells us how much modality $m$ attends to each other modality. When audio attends strongly to text (high $\alpha_{a \to t}$), it means the audio signal is ambiguous and text is providing disambiguating context.
-
 ### Equalized Odds: Why Both Terms Are Necessary
 
-Define binary predictions $\hat{y} \in \{0, 1\}$ from scores $\hat{p}$ at threshold $\tau^*$.
+**Equal Opportunity (EO):** $\text{EOpp} = \text{TPR}_M - \text{TPR}_F$
 
-**Equal Opportunity (EO):**
-$$\text{EOpp} = \mathbb{E}[\hat{Y}|Y=1, A=0] - \mathbb{E}[\hat{Y}|Y=1, A=1] = \text{TPR}_M - \text{TPR}_F$$
+**Equalized Odds (EOdds):** EO **AND** $\text{FPR}_M = \text{FPR}_F$
 
-**Equalized Odds (EOdds):**
-$$\text{EOdds} = \text{EO} \quad \text{AND} \quad \text{FPR}_M = \text{FPR}_F$$
+A model that predicts $\hat{Y}=1$ for all samples satisfies EO trivially but catastrophically violates EOdds. The FPR term in the loss directly penalizes this collapse.
 
-A model that predicts $\hat{Y}=1$ for all samples satisfies EO ($\text{TPR}_M = \text{TPR}_F = 1$) but catastrophically violates EOdds ($\text{FPR}_M = \text{FPR}_F = 1$, not 0). The all-positive model causes every non-depressed person to be flagged — clinically catastrophic and economically unsustainable.
-
-The FPR term `(FPR_M − FPR_F)²` in the loss directly penalizes this collapse, forcing the model to be selective in its positive predictions across both groups.
-
-### Bootstrap CI: Exact Algorithm
+### Bootstrap CI and Paired Bootstrap Test: Exact Algorithms
 
 ```
-Input: y (true labels, N=34), p̂ (predicted probabilities), B=2000, seed
+Bootstrap CI (per-configuration):
+  For b in 1..2000: resample N indices with replacement, compute AUC*[b]
+  CI_95 = (percentile(AUC*, 2.5), percentile(AUC*, 97.5))
 
-For b in 1..B:
-    idx* = sample_with_replacement(range(N), size=N)
-    y*   = y[idx*]
-    p̂*  = p̂[idx*]
-    θ*[b] = roc_auc_score(y*, p̂*)
-
-CI_95 = (percentile(θ*, 2.5), percentile(θ*, 97.5))
+Paired bootstrap test (tri-modal vs. best unimodal, dev N=34):
+  δ_obs = AUC(tri-modal) − AUC(best unimodal) = 0.698 − 0.721 = −0.023
+  For b in 1..2000: resample jointly, compute δ*[b]
+  p = P(δ* ≥ 0) = 0.859   ← still accurate, unchanged by this session's edits
 ```
 
-This gives the nonparametric confidence interval for AUC on the dev set. The wide CIs (e.g., face: [0.245, 0.691]) reflect genuine sampling variability on N=34, not model instability.
+p=0.859 means 85.9% of bootstrap resamples show tri-modal ≥ audio-only AUC — this does *not* say tri-modal is better, it says the two are statistically indistinguishable on N=34.
 
-### Paired Bootstrap Test: Exact Algorithm
+### Wilcoxon Signed-Rank Test at Small n — the n=5 Floor (NEW, important)
 
-```
-Input: y, p̂_A (tri-modal), p̂_B (audio), B=2000
-
-δ_obs = AUC(y, p̂_A) − AUC(y, p̂_B)  = 0.698 − 0.721 = −0.023
-
-For b in 1..B:
-    idx* = sample_with_replacement(range(N), size=N)
-    δ*[b] = AUC(y[idx*], p̂_A[idx*]) − AUC(y[idx*], p̂_B[idx*])
-
-p-value = P(δ* ≥ 0 | H₀: δ = 0) = mean(δ* >= 0) = 0.859
-```
-
-p=0.859 means: 85.9% of bootstrap resamples show tri-modal ≥ audio AUC. This does NOT say tri-modal is better — it says on N=34, we cannot distinguish the two. This is the scientifically honest conclusion.
+For the multi-task-vs-single-task paired comparison (n=5 seeds), an *exact* two-sided Wilcoxon signed-rank test has only $2^5=32$ equally likely sign patterns under the null. The most extreme possible result (all 5 differences the same sign) gives:
+$$p = 2 \times \frac{1}{32} = 0.0625$$
+This is *already above* α=0.05. **No possible outcome at n=5 could ever reach conventional significance**, regardless of the true effect size. The observed p=0.625 is therefore not just "not significant" — the test itself was underpowered by construction. Contrast with the n=10 attention/fairness tests, which additionally report Cohen's d and post-hoc power (16%/6%/9%) — a stronger, more honest standard that the n=5 test does not yet have. If asked why the two tests are held to different standards, say so plainly: this is a real limitation, and more seeds would be needed to make the n=5 test informative.
 
 ---
 
@@ -149,184 +160,225 @@ p=0.859 means: 85.9% of bootstrap resamples show tri-modal ≥ audio AUC. This d
 
 ---
 
-**Q1: "Your tri-modal AUC (0.698) is LOWER than audio-only (0.721). Why is fusion worse?"**
+**Q1: "Your paper's title is about multi-task learning, but your own significance test says the multi-task improvement isn't real. Isn't that a problem for your whole thesis?"**
 
 **Strong Answer:**
 
-The difference (−0.023 AUC) is not statistically significant: paired bootstrap p = 0.859, and the 95% confidence intervals overlap substantially. On N=34, a difference of 0.023 is within sampling noise — a 1-sample perturbation in the dev set changes AUC by approximately this magnitude.
-
-More importantly, tri-modal achieves *higher F1* (0.607 vs. 0.592) and *higher accuracy* (0.688 vs. 0.676). F1 is the primary clinical metric — it accounts for both precision and recall. The model that ranks highest on F1 is the model that balances false negatives (missed depressions, highest clinical cost) and false positives (unnecessary referrals). Error analysis confirms tri-modal correctly classifies 5 participants that audio-only misclassifies. Those 5 are the clinical value proposition of fusion: the cases where face or text provides compensating signal when audio cues are weak.
-
-The AUC measure is sensitive to the ranking of all N=34 samples — it is appropriate for comparing ROC curves. F1 at a clinically-tuned threshold is the deployment metric. Both are reported; neither is cherry-picked.
+No — it is the honest, correctly-reported state of the evidence, and it is *more* defensible than claiming false certainty. The mean improvement (0.607→0.629) and variance reduction (±0.063→±0.021) are real, reproducible observations — I re-ran the single-task baseline independently this session and got 0.607±0.063, exactly matching the original. What I do *not* claim is that a formal significance test confirms this at n=5, because it doesn't (p=0.625), and I show mathematically that n=5 could never have shown significance regardless of the true effect (best-case p=0.0625). The correct scientific statement is: "the direction is consistently positive and the mechanism is theoretically motivated, but this sample size cannot statistically confirm it." I report exactly that, rather than either hiding the test or overclaiming from the mean alone.
 
 ---
 
-**Q2: "N=34 is too small. Your results are meaningless."**
+**Q2: "If the multi-task result isn't confirmed, what IS actually validated in this thesis?"**
 
 **Strong Answer:**
 
-The small dev split (N=34) is the official DAIC-WOZ partition — every published paper in this challenge (AVEC 2017, Gong & Poellabauer, Williamson et al.) evaluates on the same N=34. We are consistent with the field's standard evaluation protocol.
-
-To address the small-N limitation rigorously, we implemented three measures that no prior DAIC-WOZ ablation paper has done simultaneously:
-1. Multi-seed training (5 seeds) with mean ± std reporting
-2. Per-configuration bootstrap CI (2,000 resamples)
-3. Paired bootstrap significance test
-
-The honest finding — overlapping CIs, p=0.859 — is the correct answer to "is tri-modal significantly better on N=34?" The answer is no, and we say so. A definitive significance claim requires the full test split (N=47) evaluated once — which this pipeline supports without modification.
-
-Overlapping CIs on N=34 are expected from power analysis: for AUC difference of 0.023, the required N for 80% power at α=0.05 is approximately 400. This is a structural limitation of the dataset, not a flaw in the methodology.
+Three things are genuinely well-supported, not just observed: (1) the controlled-ablation *methodology* itself — using one model class across all 7 modality subsets is methodologically sound regardless of which configuration wins; (2) the case-level finding that 5/34 dev participants are correctly classified by tri-modal fusion but missed by the best single modality, while only 1/34 is wrong under every configuration — a specific, checkable observation, not an aggregate significance claim; (3) the negative/inconclusive findings themselves are validated in the sense that the statistical tests behind them (Wilcoxon, bootstrap, power analysis) are correctly computed and honestly reported — that rigor is the actual contribution of this thesis, not a specific performance number.
 
 ---
 
-**Q3: "Cross-modal attention is not novel. Transformers have been doing this for years."**
+**Q3: "Why report a test (n=5 Wilcoxon) that you admit could never reach significance? Isn't that a wasted analysis?"**
 
 **Strong Answer:**
 
-Correct — cross-modal attention is an established mechanism. The novelty is not the mechanism in isolation; it is the combination of:
-
-1. **The ablation framework**: controlled-variable design where every modality subset uses the identical model class. Prior DAIC-WOZ papers that use attention do not ablate with controlled variables — they change the model architecture when they change the modality subset.
-
-2. **The fairness constraint integrated into the fusion training**: Equalized Odds loss applied during cross-modal attention training, not post-hoc fairness auditing. The fairness and fusion objectives are optimized jointly.
-
-3. **The convergent XAI**: attention rollout + gradient attribution + occlusion ablation applied together to the same clinical prediction. The convergence (three independent methods agree on audio and AU04) validates the attention mechanism is learning clinically meaningful inter-modal relationships, not arbitrary correlations.
-
-The novelty claim is not "we invented attention" — it is "we provide the first controlled, statistically validated, fairness-constrained, XAI-verified ablation of cross-modal attention on DAIC-WOZ."
+Reporting it is more honest than omitting it. Before running this test, the paper's only evidence for the multi-task improvement was "all 5 seeds beat the baseline's *mean*," which sounds stronger than it is — it doesn't test seed-matched superiority. Running the paired test, even knowing its floor, converts a vague claim into a precise, falsifiable one, and surfaces the seed-matched result (only 3/5 wins) which is materially different from "all 5 seeds are above the mean." Reporting a test's limitation alongside its result is standard good practice, not wasted effort.
 
 ---
 
-**Q4: "The fairness gap (TPR gap = 0.286) is actually a problem with your model, not a contribution."**
+**Q4: "Your tri-modal AUC (single-task, 0.698) is LOWER than audio-only (0.721). Why is fusion worse?"**
 
 **Strong Answer:**
 
-Yes. That is precisely the point.
-
-The fairness audit *finds* a real bias — 71% TPR for males vs. 100% for females. If the audit found 6/6 FAIR on a model that collapsed to predicting positive for everyone, the audit would be vacuous. The ability to *detect* a non-trivial bias is evidence the audit is functioning correctly.
-
-The Equal-Opportunity gap of 0.286 is a genuine, clinically significant finding. Male patients with depression are underdetected by the model. This motivates the Equalized Odds training constraint `L_fairness = (TPR_M − TPR_F)² + (FPR_M − FPR_F)²` as the intervention. The sequence — audit → measure gap → design constraint → retrain — is exactly the responsible AI development cycle.
-
-For the paper, we frame this as: "We discover and measure a demographic performance disparity; we propose and implement an algorithmic mitigation; we report both the pre- and post-mitigation metrics." This is a complete fairness contribution, not a liability.
+The difference (−0.023 AUC) is not statistically significant: paired bootstrap p=0.859, confidence intervals overlap substantially. Tri-modal achieves *higher* F1 (0.607 vs. 0.592) and accuracy (0.688 vs. 0.676), and rescues 5/34 dev participants that audio-only misclassifies, while only 1/34 is wrong under every configuration. AUC measures ranking quality across all samples; F1 at a clinically-tuned threshold is closer to the deployment metric. Both are reported; neither is cherry-picked. Separately, a leave-one-modality-out occlusion experiment on the *test* split (Section VIII-B) shows audio removal does not hurt test performance either — audio's dominance is a dev-split-specific finding, and I'm explicit about that scope in the paper.
 
 ---
 
-**Q5: "AU04, AU15, AU17 as depression markers — isn't this circular? You trained on labels that include those participants' faces."**
+**Q5: "You found that removing audio doesn't hurt on test, but your explainability section says audio is the most-attended modality. Which is it?"**
 
 **Strong Answer:**
 
-The gradient saliency identifies which input features most influence the model's output — it is a post-hoc attribution, not a training objective. The model was not told "look at AU04." It learned to attend to AU04 because, during training, AU04 variation co-occurred with PHQ-8 depression labels across 107 participants.
-
-The validation is that this data-driven finding matches the clinical literature. Ekman et al. established AU04 (Brow Lowerer) as a FACS marker of sadness/distress decades before DAIC-WOZ existed. Our model independently rediscovers this relationship. The convergence between data-driven attribution and clinical knowledge is not circular — it is a form of face validity for the model's internal representations.
-
-Circularity would exist if we used AU04 as a feature specifically *because* it is a depression marker. We use all 20 CLNF AUs equally, and AU04 emerges from the gradient. That emergence is the finding.
+Both are true, and they answer different questions. Attention rollout measures *how much the model looks at* a modality during a forward pass on the dev split — that's audio, on average. The test-time masking experiment measures *how much the model's test-set performance depends on* a modality being present — that's text, where removal collapses AUC to 0.435 (below chance). A modality can receive high average attention while another modality is more critical for generalization to unseen data. I treat this as a genuine, reportable finding about the difference between attribution and necessity, not an inconsistency to explain away.
 
 ---
 
-**Q6: "Why use TF-IDF at all? BERT/clinical NLP models would obviously be better."**
+**Q6: "N=34/47 is too small. Your results are meaningless."**
 
 **Strong Answer:**
 
-BERT fine-tuning on 107 training transcripts would almost certainly produce random predictions. The BERT base model has 110M parameters vs. our 638K. Fine-tuning 110M parameters on 107 samples, even with frozen lower layers, risks catastrophic forgetting of the language model's representations.
-
-In the few-shot NLP literature (Gao et al. ACL 2021; Brown et al. NeurIPS 2020), the standard finding is that BERT fine-tuning requires at least 1,000 samples for stable performance — 107 is an order of magnitude below this threshold.
-
-The correct framing is: TF-IDF bigrams with vocabulary=1,000 is the regularized, overfitting-resistant choice for N=107. When the combined DAIC-WOZ + AVEC + CMDC dataset (N ≈ 500+) is used, replacing the text encoder with a frozen BERT + 2-layer MLP head is the recommended next step and is already architecturally possible within `ConfigurableFusionModel` by swapping `TextEncoder`.
+N=34/47 is the official DAIC-WOZ dev/test partition used by essentially every published paper on this benchmark. To address the small-N limitation rigorously, beyond what's standard in the field, this work adds: multi-seed training with mean±std and bootstrap CIs; paired significance tests with explicit acknowledgment of their power limits (including the n=5 Wilcoxon floor); and a pooled 10-fold cross-validation over all 188 available participants (Section VIII-C), which shows the fixed-split fairness result (TPR gap=0.000) is *not* stable across folds (mean gap 0.415±0.211, 7/10 folds with zero female recall). Reporting that the fixed split is unreliable, using a larger resampled estimate as corroboration, is a stronger response to "N is too small" than simply asserting the numbers are fine.
 
 ---
 
-**Q7: "Your model uses CPU training and reports CPU results. This doesn't reflect GPU performance."**
+**Q7: "The fairness training loss doesn't actually reduce the TPR gap (p=0.813). Isn't that a failed contribution?"**
 
 **Strong Answer:**
 
-All experiments are conducted on the official DAIC-WOZ splits (train=107, dev=34) to ensure comparability with published results. GPU availability affects training speed, not the fundamental learning dynamics for a 638K-parameter model.
-
-The key point: all hyperparameters, model architecture, and training procedure are GPU-ready. The GPU Colab notebooks (phase1–phase7) are provided for full reproduction. CPU training was used for the statistical ablation study (35 runs × 40 epochs each) to ensure reproducibility without requiring specific hardware. The reported metrics are lower-bound estimates — GPU training with larger batch sizes and more epochs is expected to improve AUC toward the target range (>0.80) identified in prior GPU-trained DAIC-WOZ systems.
+It's a negative result, reported as one, and it is still a real contribution in the "responsible AI development cycle" sense: audit → measure a real gap (Equal Opportunity gap 0.286 on dev) → design and integrate a training-time constraint → re-measure honestly → find it insufficient at this sample size, with a post-hoc power analysis confirming the study is underpowered (not just null) for the observed effect size. That is a complete, honestly-reported fairness investigation. If I had hidden the negative result or only reported the dev-split TPR gap of 0.000 without the 10-fold corroboration showing it isn't stable, that would be the actual failure — not the negative finding itself.
 
 ---
 
-**Q8: "You say 'rescued 5 cases' — but couldn't audio just have different errors than face on those 5? It's not necessarily fusion."**
+**Q8: "AU04 as a depression marker — isn't this circular? You trained on labels from those participants' faces."**
 
 **Strong Answer:**
 
-Correct, and this is why we call it "error analysis" rather than claiming causal superiority.
-
-The 5 rescued cases are participants correctly classified by `face+audio+text` but incorrectly classified by `audio` alone using the same dev set, threshold, and seed distribution. This is not evidence that fusion *caused* correct classification — it is evidence that the tri-modal model's decision boundary includes those 5 participants on the correct side. The mechanism could be:
-(a) Face/text features providing disambiguating signal for those 5 participants
-(b) Regularization from the larger, more complex model
-(c) Random variation across the seed ensemble
-
-For a definitive causal attribution, we would need: (1) interpretable attention weights for those specific 5 cases showing elevated face/text attention, and (2) leave-one-sample-out cross-validation to confirm the pattern is stable. These are Phase 8 (paper) analyses that the current framework supports.
-
-The claim in the thesis is conservative: "5 participants appear in tri-modal's correct column but audio-only's incorrect column, providing preliminary evidence for fusion's complementary coverage." That is a defensible observation.
+Gradient saliency is a post-hoc attribution method — the model was never told to look at AU04. It emerged from training because AU04 variation correlated with PHQ-8 labels across the training participants. The validation is that this data-driven finding matches independent clinical literature (Ekman's FACS work identifying AU04/Brow Lowerer as a sadness/distress marker, established decades before DAIC-WOZ existed). Circularity would exist only if AU04 had been hand-selected as a feature *because* it's a known marker; instead all 20 AUs are used equally and AU04 emerges from the gradient across three independent attribution methods (rollout, gradient×input, occlusion).
 
 ---
 
-## Part V — Possible Reviewer Attacks & Preemptive Responses
+**Q9: "Why does your paper cite reproducibility-crisis papers about DAIC-WOZ? Isn't that undermining your own dataset choice?"**
 
-**Attack 1: "The ablation study doesn't include a 'no-attention' baseline (simple concatenation)."**
+**Strong Answer:**
 
-Response: Valid. A `concat_only` baseline would directly test whether the attention mechanism or the modality combination drives any performance difference. This is a legitimate limitation. The architectural contribution in this work is the controlled-variable design and fairness integration — the attention mechanism builds on prior work. Adding a no-attention baseline in Phase 8 (paper) would strengthen the architecture novelty claim. The `ConfigurableFusionModel` class supports this extension with a minor modification (bypass the attention module).
-
-**Attack 2: "Why not use the full 188 DAIC-WOZ participants? The test split was not reported."**
-
-Response: The official test split (N=47) is a held-out set whose labels are not publicly released by USC ICT. Evaluation requires submission to the AVEC 2017 challenge system. Development was conducted entirely on train (N=107) and dev (N=34) per the official protocol. Test set results require challenge submission — planned for Phase 8.
-
-**Attack 3: "Multi-seed mean ± std is necessary but not sufficient. You need cross-validation."**
-
-Response: Correct. 5-fold cross-validation on the full 141-participant set (train+dev) would provide N=~28 per fold as test set — comparable to the dev split but with 5× the validation samples. This trades the official train/dev split for CV-estimated performance, which is non-standard for this challenge dataset. A defensible approach for the paper is to report both: official dev split results (for comparability with prior work) and 5-fold CV results (for statistical power). The `ConfigurableFusionModel` framework supports this extension directly.
-
-**Attack 4: "You haven't shown the fairness constraint actually reduces the TPR gap."**
-
-Response: The training constraint is implemented, but a before/after comparison (model without fairness loss vs. with) on the same seed distribution was not explicitly reported. This is a gap. For the paper, training 5 seeds with `FAIRNESS_LAMBDA=0` and comparing the TPR gap distribution to `FAIRNESS_LAMBDA=0.1` would directly demonstrate the constraint's effectiveness. The `ablation_study.py` framework supports this with a configuration change.
+The opposite — it's demonstrating awareness of the field's actual state and positioning this work as a response to it, not ignoring it. Danylenko & Unold (2026) found only 5/66 DAIC-WOZ papers meet minimal reproducibility standards, largely due to subject-level leakage; I explicitly verify and state that all splits here (fixed and k-fold) are participant-disjoint. The ICMI 2025 study raises a concern that DAIC-WOZ classifiers learn disorder-general rather than disorder-specific cues; the symptom-level breakdown in this thesis (Section VIII-A) directly tests that concern with real per-symptom data rather than asserting the model is fine. I report the result as partial evidence, not a clean rebuttal, because the best-predicted symptoms are still the most generic ones — that honesty is the point.
 
 ---
 
-## Part VI — Publication Standard Checklist
+**Q10: "Why TF-IDF, not BERT?"**
+
+**Strong Answer:**
+
+BERT fine-tuning on 107 training transcripts risks catastrophic forgetting — 110M parameters vs. 107 samples is roughly six orders of magnitude past any reasonable few-shot fine-tuning regime. TF-IDF with a 1,000-word vocabulary is the regularized, overfitting-resistant choice at this N. A frozen-BERT-embedding + small-head approach becomes reasonable once combined corpora reach N≈500+ (noted as future work in the paper).
+
+---
+
+**Q11: "Your model uses CPU training. Doesn't that limit your results?"**
+
+**Strong Answer:**
+
+All experiments use the official DAIC-WOZ splits to ensure comparability with published results; CPU training affects speed, not the fundamental learning dynamics for a ~600K-parameter model on ~100 training samples. All hyperparameters and architecture are GPU-ready; CPU was used specifically to guarantee reproducibility of the ablation study (35+ runs) without depending on specific hardware. This is disclosed as a limitation in the paper, not hidden.
+
+---
+
+## Part V — Possible Reviewer Attacks & Responses (updated — three of four are now RESOLVED, with honest/negative findings)
+
+**Attack 1 (RESOLVED): "The ablation study doesn't include a no-attention baseline."**
+
+Resolved. A 10-seed cross-modal-attention-vs-plain-concatenation comparison is now in the paper (`ConcatFusionModel`, Section on Cross-Modal Attention). Result: attention shows a positive trend (F1 +0.024, AUC +0.012) but does **not** reach significance (Wilcoxon p=0.496/0.647), with an explicit Cohen's d + post-hoc power analysis showing the study is underpowered (16%/9% power) rather than showing a true null effect. If asked, be ready to state this as an honest inconclusive result, not a proof either way.
+
+**Attack 2 (RESOLVED): "Why not use the full 188 DAIC-WOZ participants, or report the test split?"**
+
+Resolved. Full test-split results (F1=0.585, AUC=0.706, N=47) are reported and are available to registered DAIC-WOZ users under the standard data-use agreement (no challenge-submission requirement, contrary to what earlier drafts of this document said). Additionally, a pooled 10-fold cross-validation over all 188 participants (train+dev+test combined) is now reported (Section VIII-C / k-fold section), giving F1=0.554±0.093, AUC=0.612±0.120 — lower than the fixed-split numbers, which is itself an important, honestly-reported finding about fixed-split reliability at this N.
+
+**Attack 3: "Multi-seed mean±std is necessary but not sufficient. You need cross-validation."**
+
+Resolved, same as Attack 2 — the pooled 10-fold CV directly addresses this. Be ready to explain *why* the k-fold numbers are lower than the fixed-split numbers: the fixed AVEC-2017 split may be a moderately favorable partition relative to the full pool, and/or the model is sensitive to which participants land in train vs. test — both are stated honestly as limitations rather than reasons to prefer the more favorable fixed-split numbers.
+
+**Attack 4 (RESOLVED): "You haven't shown the fairness constraint actually reduces the TPR gap."**
+
+Resolved, with a negative result. A 10-seed before/after comparison (λ_fair=0 vs. 0.1) is reported: mean TPR gap 0.320→0.311, Wilcoxon p=0.813, fairness wins only 3/10 seeds vs. the baseline's 4/10 (3 ties). This is reported plainly as a negative result, alongside a power analysis showing the study is underpowered for the observed effect size. Do not describe this as "the fairness loss works" in the viva — the honest answer is "it does not show a significant effect at this N, and here is the power analysis explaining why that is not the same as proving no effect."
+
+**Attack 5 (NEW): "Your test-time missing-modality experiment and your dev-split explainability section seem to disagree about which modality matters most."**
+
+See Q5 above. Prepared answer: attention weight (dev, average) and inference-time necessity (test, ablative) are different properties; the paper reports both without reconciling them into a single ranking, because they measure different things.
+
+**Attack 6 (NEW): "Why does removing audio slightly *improve* test AUC in your robustness table?"**
+
+Honest answer: the effect is small (AUC 0.706→0.725, ΔAUC≈0.02 at N=47) and is most plausibly sampling noise at this test size rather than a real effect — no significance test was run on this specific comparison, and it should not be oversold as "audio hurts the model." The F1 effect of removing audio is unambiguously negative on both dev and test (0.622→0.583 dev, 0.585→0.527 test), so the more defensible summary is "removing audio costs F1 on both splits; its effect on AUC specifically is small and likely noise at N=47."
+
+---
+
+## Part VI — Publication/Defense Readiness Checklist (updated)
 
 | Criterion | Status | Evidence |
 |-----------|:------:|---------|
-| Clear novel contribution | ✅ | Controlled ablation + Equalized Odds + multi-seed |
-| Real clinical dataset | ✅ | DAIC-WOZ, 188 participants, USC ICT |
-| Reproducible code | ✅ | Full pipeline, deterministic seeds, requirements.txt |
-| Baselines compared | ✅ | AVEC 2017, Williamson 2016, Gong 2017 |
-| Statistical validation | ✅ | 5-seed mean±std, bootstrap CI, paired test |
-| Ablation study | ✅ | 7 configs × 5 seeds = 35 runs |
-| Fairness audit | ✅ | 4 criteria, real gap found, training constraint |
-| Explainability | ✅ | 3 converging methods, clinical alignment |
-| Honest limitations | ✅ | N=34 power, overlapping CIs, CPU training |
-| Mathematical formulation | ✅ | Attention, fairness loss, bootstrap equations |
-| Before/after fairness | ⚠️ | Needed for Phase 8 paper |
-| No-attention baseline | ⚠️ | Needed for Phase 8 paper |
-| Test set evaluation | ⚠️ | Requires AVEC 2017 challenge submission |
+| Clear novel contribution | ✅ | Controlled ablation + multi-task learning + honest statistical treatment throughout |
+| Real clinical dataset | ✅ | DAIC-WOZ, 188 participants, USC ICT, verified participant-disjoint splits |
+| Reproducible code | ✅ | Full pipeline, deterministic seeds, requirements.txt (`data/processed/daic_test_raw_cache/` is currently built ad hoc — see Part VIII note) |
+| Baselines compared | ✅ | AVEC 2017, Williamson 2016, Gong 2017, Ray 2019, Shen 2022 (six baselines, non-comparable ones flagged as such) |
+| Statistical validation | ✅ | 5/10-seed mean±std, bootstrap CI, paired Wilcoxon, Cohen's d + power analysis (10-seed tests); n=5 floor explicitly acknowledged |
+| Ablation study | ✅ | 7 configs × 5 seeds = 35 runs, plus 6-config internal audio-feature ablation |
+| Cross-validation | ✅ | Pooled 10-fold CV over all 188 participants |
+| Fairness audit | ✅ | 4 criteria, real gap found, training constraint tested, negative result reported honestly |
+| Explainability | ✅ | 3 converging dev-split methods + test-time necessity cross-check |
+| Symptom-level analysis | ✅ | Presence/absence breakdown across 8 PHQ-8 items, partial evidence re: disorder-general-cues concern |
+| Calibration analysis | ✅ | Brier score, ECE, reliability table, dev/test consistent FN-skewed error profile |
+| Honest limitations | ✅ | N=34/47 power, overlapping CIs, n=5 Wilcoxon floor, CPU training, threshold-leakage bug found and fixed this session |
+| Mathematical formulation | ✅ | Attention, fairness loss, bootstrap, Wilcoxon-floor equations |
+| Positioning vs. reproducibility literature | ✅ | Explicit citation and response to 2025/2026 DAIC-WOZ reproducibility critiques |
 
 ---
 
-## Part VII — Key Numbers to Memorize for Viva
+## Part VII — Key Numbers to Memorize for Viva (REPLACES the old Part VII — old numbers described the wrong model)
 
 ```
-DAIC-WOZ: 188 total, 107 train, 34 dev, 47 test (held out)
-PHQ-8 threshold: ≥ 10 = depressed; prevalence ≈ 28% in training split
+DAIC-WOZ: 188 total, 107 train, 34 dev, 47 test (participant-disjoint, verified)
+PHQ-8 threshold: >= 10 = depressed; prevalence ~28% in training split
 
-Model size: 638K parameters (embed_dim=64, vocab=1000)
-Previous collapse: 7.8M params, AUC=0.49 (memorized 107 training samples)
+PROPOSED MODEL = MULTI-TASK (not the single-task tri-modal baseline):
+  Dev:  F1 = 0.629 +/- 0.021   AUC = 0.658 +/- 0.029   Acc = 68.8%
+  Test: F1 = 0.585             AUC = 0.706             Acc = 70.2%
+  Params: ~592K (embed_dim=64)
 
-Ablation (7 configs × 5 seeds):
-  Face only      : AUC 0.513±0.113  F1 0.525
-  Audio only     : AUC 0.721±0.013  F1 0.592  ← best AUC
-  Text only      : AUC 0.561±0.043  F1 0.539
-  Face+Audio     : AUC 0.712±0.028  F1 0.563
-  Face+Text      : AUC 0.667±0.069  F1 0.570
-  Audio+Text     : AUC 0.664±0.057  F1 0.437
-  Face+Audio+Text: AUC 0.698±0.047  F1 0.607  ← best F1, best Acc (0.688)
+Single-task tri-modal baseline (for comparison only, NOT the proposed model):
+  Dev:  F1 = 0.607 +/- 0.063   AUC = 0.698 +/- 0.047
 
-Fairness: Equal Opportunity gap = 0.286 (TPR_F=1.00, TPR_M=0.71)
-XAI: audio attn weight 0.39 (top); AU04 top gradient-attributed face feature
-Error analysis: tri-modal rescues 5 cases vs. audio-only; 1 hard case in all
-Paired bootstrap: p=0.859 (expected on N=34; not significant at α=0.05)
+Multi-task vs single-task significance: Wilcoxon p=0.625, n=5, 3/5 seeds favor
+  multi-task. NOTE: n=5 exact test cannot reach p<0.05 under ANY outcome
+  (floor = 0.0625) -- inconclusive by construction, not a disconfirmation.
 
-SOTA (DAIC-WOZ dev F1):
-  AVEC-2017 audio: 0.50  |  AVEC-2017 text: 0.49
-  Williamson+: 0.57      |  THIS WORK: 0.61  |  Gong+: 0.70
+Ablation (7 configs x 5 seeds, single-task, dev):
+  Face only      : AUC 0.513+/-0.113  F1 0.525
+  Audio only     : AUC 0.721+/-0.013  F1 0.592  <- best AUC
+  Text only      : AUC 0.561+/-0.043  F1 0.539
+  Face+Audio     : AUC 0.712+/-0.028  F1 0.563
+  Face+Text      : AUC 0.667+/-0.069  F1 0.570
+  Audio+Text     : AUC 0.664+/-0.057  F1 0.437
+  Face+Audio+Text: AUC 0.698+/-0.047  F1 0.607  <- best single-task F1/Acc
+  Paired bootstrap (tri-modal vs audio-only): p=0.859, n.s. (unchanged)
+
+Cross-modal attention vs concat (10 seeds): F1 +0.024 (p=0.496), AUC +0.012
+  (p=0.647) -- n.s., underpowered (16%/9% power)
+
+Equalized Odds fairness loss (10 seeds, before/after): TPR gap 0.320->0.311,
+  p=0.813 -- n.s., 3/10 wins vs baseline's 4/10, underpowered
+
+Pooled 10-fold CV (N=188): F1=0.554+/-0.093  AUC=0.612+/-0.120
+  TPR gap = 0.415+/-0.211 (7/10 folds: TPR_female=0)
+  -> shows the fixed-split TPR gap=0.000 is NOT a stable result
+
+Test-time missing-modality masking (dev-derived threshold, no leakage):
+  Baseline:      dev F1=0.622 AUC=0.663 | test F1=0.585 AUC=0.706
+  Face masked:   dev F1=0.622 AUC=0.655 | test F1=0.585 AUC=0.712  (no cost)
+  Audio masked:  dev F1=0.583 AUC=0.580 | test F1=0.527 AUC=0.725  (F1 cost, AUC noise)
+  Text masked:   dev F1=0.555 AUC=0.610 | test F1=0.415 AUC=0.435  (collapse)
+
+Symptom-level breakdown (dev, presence/absence macro-F1 across 8 PHQ-8 items):
+  Range: 0.209 (Psychomotor Change) -- 0.424 (Tired/Low Energy)
+  Best-predicted symptoms are the most GENERIC ones -> only partial evidence
+  against the "disorder-general cues" critique (ICMI 2025)
+
+Internal audio-feature ablation (3 seeds, dev AUC):
+  MFCC only 0.710 | COVAREP only 0.619 | FORMANT only (5-dim!) 0.688
+  MFCC+COVAREP 0.682 | COVAREP+FORMANT 0.569 | Full (199-dim) 0.711
+  -> MFCC alone ~= full combination; COVAREP/FORMANT not a clear performance add
+
+Calibration (Brier / ECE): dev 0.233/0.102, test 0.227/0.157 -- moderate
+  miscalibration. Error profile FN-skewed on BOTH splits (dev 8FN/2FP,
+  test 10FN/4FP out of 14/47 misclassified) -- consistent, clinically
+  relevant (less-safe failure mode)
+
+Fairness (dev): Equal Opportunity gap = 0.286 (TPR_F=1.00, TPR_M=0.71)
+XAI (dev): audio attention weight 0.39 (top); AU04 top gradient-attributed
+  face feature -- but test-time masking shows audio is NOT most necessary
+  at test time (see above) -- attribution != necessity
+
+Error analysis (single-task ablation): tri-modal rescues 5/34 dev cases vs
+  best unimodal; 1/34 wrong under every configuration
+
+SOTA (DAIC-WOZ dev F1, six baselines now, non-comparable ones flagged):
+  AVEC-2017 audio: 0.50 | AVEC-2017 text: 0.49 | Williamson+: 0.57
+  Gong+: 0.70 | Ray+ (AUC 0.80, not F1-comparable) | Shen+ (AUC 0.83, ext. split)
+  THIS WORK (multi-task, dev): F1 0.629 | (test): F1 0.585
 ```
 
 ---
 
-*This document is a living reference for the thesis defense and IEEE reviewer response. Update each section as Phase 8 (paper) experiments are completed.*
+## Part VIII — Known Loose Ends (say these proactively if asked "what would you do with more time?")
+
+1. **`data/processed/daic_test_raw_cache/` is not regenerated by any committed script** — it exists on the development machine from an earlier interactive run of the k-fold experiment. A clean checkout cannot currently re-run the missing-modality-robustness or calibration scripts without first rebuilding this cache. Fix: extract the test-set-feature-building logic already in `src/experiments/kfold_cv.py` into a standalone, committed script.
+2. **The internal audio-feature ablation uses only 3 seeds** (vs. 5/10 elsewhere), to bound compute cost across 6 additional configurations — its numbers should be read as suggestive, not as precisely estimated as the rest of the paper.
+3. **The single-task-vs-multi-task significance test bundles two changes** (multi-task heads AND the extended 199-dim COVAREP+FORMANT audio vs. the single-task baseline's 120-dim MFCC-only audio) — even a significant result would not have cleanly isolated multi-task learning as the sole causal factor. An ideal follow-up would train a multi-task model on the *old* 120-dim audio to isolate the two effects.
+4. **E-DAIC external validation** is named as future work in the paper but has not been attempted — requires a separate USC ICT data-use request, and any cross-dataset comparison must explicitly exclude participants who overlap between DAIC-WOZ and E-DAIC to avoid reintroducing the leakage this thesis otherwise takes care to avoid.
+
+---
+
+*This document is a living reference for the thesis defense and IEEE reviewer response. It was last synchronized with `documents/paper_draft.tex` in the session that added Sections VIII-A through VIII-D (symptom breakdown, missing-modality robustness, calibration, audio-feature ablation) and the multi-task significance test. If the paper changes again, re-check Parts I, IV, V, VI, and VII against it before relying on this document in a real defense.*

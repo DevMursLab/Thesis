@@ -125,9 +125,12 @@ def error_cases(y_true, probs, preds, split_name):
     return cases
 
 
-def analyze_split(name, Xf, Xa, Xt, y, model, device):
+def analyze_split(name, Xf, Xa, Xt, y, model, device, threshold=None):
+    """If threshold is None, it is selected on this split's own labels
+    (only valid for dev). If given, it is applied fixed (required for
+    test, to avoid selecting the threshold on test labels)."""
     probs = get_probs(model, Xf, Xa, Xt, device)
-    thr = best_threshold(y, probs)
+    thr = threshold if threshold is not None else best_threshold(y, probs)
     preds = (probs >= thr).astype(int)
 
     brier = brier_score_loss(y, probs)
@@ -157,12 +160,16 @@ def main():
 
     print("Dev split:")
     dev_report = analyze_split("Dev", Xf_dv, Xa_dv, Xt_dv, y_dv, model, device)
-    print("Test split:")
-    test_report = analyze_split("Test", Xf_te, Xa_te, Xt_te, y_te, model, device)
+    print("Test split (threshold fixed from dev, no leakage):")
+    test_report = analyze_split("Test", Xf_te, Xa_te, Xt_te, y_te, model, device,
+                                 threshold=dev_report["threshold"])
 
     report = {
         "analysis": "calibration (Brier score, ECE, reliability table) and "
-                    "error case study for the multi-task model",
+                    "error case study for the multi-task model. Brier/ECE are "
+                    "threshold-independent (computed on raw probabilities); "
+                    "misclassification counts use a threshold selected on dev "
+                    "only, applied fixed to test.",
         "dev": dev_report,
         "test": test_report,
     }

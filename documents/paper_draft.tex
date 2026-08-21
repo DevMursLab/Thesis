@@ -62,7 +62,9 @@ to $0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
 reduced seed variance; however, a paired Wilcoxon test matching each
 multi-task seed against the single-task baseline run from the same
 seed does not reach significance ($p{=}0.625$, multi-task wins
-3/5~pairs), so we report this as an encouraging but statistically
+3/5~pairs; at $n{=}5$ this test cannot reach $p<0.05$ under any
+outcome, so this result is at best inconclusive rather than a
+disconfirmation), so we report this as an encouraging but statistically
 unconfirmed direction rather than a validated headline result. On
 the held-out test split ($N{=}47$), the
 model achieves F1\,$=0.585$ and AUC\,$=0.706$, exceeding the dev AUC
@@ -568,7 +570,18 @@ paired Wilcoxon signed-rank test matching each multi-task run against
 the single-task run from the \emph{same} seed. That test does
 \emph{not} reach significance ($p{=}0.625$, $n{=}5$): the multi-task
 model wins only 3 of the 5 matched pairs (per-seed differences:
-$-0.006, -0.076, +0.072, +0.042, +0.079$). We also note this
+$-0.006, -0.076, +0.072, +0.042, +0.079$). We note further that with
+only $n{=}5$ paired seeds, an exact two-sided Wilcoxon signed-rank
+test cannot reach $p<0.05$ under \emph{any} possible outcome: the most
+extreme possible result (all 5 differences the same sign) yields
+$p=2\times(1/2^5)=0.0625$, still above the conventional threshold.
+This test was therefore structurally unable to confirm significance
+at this seed count regardless of the true effect size, which is a
+stronger caveat than "not significant" alone conveys---it means this
+particular test, at this sample size, provides no real evidence
+either for or against a true effect, and a larger seed count (as used
+for the 10-seed attention and fairness tests above) would be required
+for this comparison to be informative. We also note this
 comparison bundles two simultaneous changes---the multi-task
 prediction heads and the extended 199-dim MFCC+COVAREP+FORMANT audio
 features, versus the single-task baseline's 120-dim MFCC-only
@@ -988,21 +1001,20 @@ by the clinical constraint that a modality may be unavailable at
 inference time. To validate this claim directly rather than merely
 asserting it, we zero-mask each modality individually at test time
 (all-modality-present as baseline) and re-evaluate on both dev and
-test splits with the same trained model. The ``None (baseline)'' row
-below is this checkpoint independently re-evaluated for this
-experiment with its own macro-F1-optimal threshold search; it differs
-slightly from the headline numbers reported elsewhere (dev F1
-$0.629\pm0.021$/AUC $0.658\pm0.029$ from the 5-seed ablation mean,
-test F1 $0.585$ from the original single evaluation run) because
-those are 5-seed means or a fixed stored threshold, while this table
-reports one deterministic forward pass of the saved checkpoint with a
-freshly-searched threshold. The relative drops from this row (not its
-absolute value) are the quantity of interest here.
+test splits with the same trained model. Following the paper's stated
+protocol, the decision threshold for every masking condition is
+selected on the \emph{dev} split's probabilities only and then applied
+fixed to the corresponding test-split evaluation---no threshold is
+ever selected using test labels. With this protocol, the unmasked
+(``None'') baseline test row below reproduces the paper's headline
+test F1 exactly ($0.585$), confirming the two evaluations are
+consistent.
 
 \begin{table}[t]
 \centering
 \renewcommand{\arraystretch}{1.15}
-\caption{Test-Time Missing-Modality Robustness}
+\caption{Test-Time Missing-Modality Robustness (threshold selected on
+dev only, applied fixed to test)}
 \label{tab:robustness}
 \begin{tabular}{lcccc}
 \toprule
@@ -1010,27 +1022,31 @@ absolute value) are the quantity of interest here.
   & \multicolumn{2}{c}{\textbf{Test ($N{=}47$)}} \\
 \textbf{Modality} & \textbf{F1} & \textbf{AUC} & \textbf{F1} & \textbf{AUC} \\
 \midrule
-None (baseline)  & 0.622 & 0.663 & 0.603 & 0.706 \\
-Face masked      & 0.622 & 0.655 & 0.621 & 0.712 \\
-Audio masked     & 0.583 & 0.580 & 0.681 & 0.725 \\
-Text masked      & 0.555 & 0.610 & 0.484 & \textbf{0.435} \\
+None (baseline)  & 0.622 & 0.663 & 0.585 & 0.706 \\
+Face masked      & 0.622 & 0.655 & 0.585 & 0.712 \\
+Audio masked     & 0.583 & 0.580 & 0.527 & 0.725 \\
+Text masked      & 0.555 & 0.610 & 0.415 & \textbf{0.435} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The result is a partial, modality-dependent robustness profile rather
 than a uniform one. Removing face costs almost nothing on either
-split, consistent with face being the weakest single modality in the
-ablation study. Removing audio costs moderately on dev but,
-surprisingly, does not hurt (and slightly helps) on the test split.
-Removing text is the critical case: dev F1 drops modestly, but test
-AUC collapses from $0.706$ to $0.435$---below chance---indicating the
-model's test-set generalization depends heavily on text being present,
-even though attention-rollout (Section~\ref{sec:xai}) ranks audio as
-the most-attended modality on average. We interpret this as evidence
-that average attention weight and inference-time necessity are
-distinct properties: a modality can receive lower average attention
-while still being critical for cross-modal integration at test time.
+split---at the dev-derived threshold, it does not change a single
+test-split prediction, consistent with face being the weakest single
+modality in the ablation study. Removing audio costs moderately on
+both splits by F1 ($0.622\to0.583$ dev, $0.585\to0.527$ test), while
+its effect on AUC is mixed (drops on dev, a small, likely-noise
+increase on test at $N{=}47$). Removing text is the clearly critical
+case on both metrics and both splits: test F1 falls from~$0.585$
+to~$0.415$ and test AUC collapses from~$0.706$ to~$0.435$---below
+chance---indicating the model's test-set generalization depends
+heavily on text being present, even though attention-rollout
+(Section~\ref{sec:xai}) ranks audio as the most-attended modality on
+average \emph{on dev}. We interpret this as evidence that average
+dev-split attention weight and test-time necessity are distinct
+properties: a modality can receive lower average attention while
+still being critical for cross-modal integration at test time.
 Practically, this means the modality-dropout regularizer does
 \emph{not} deliver uniform graceful degradation, and a deployed
 version of this system should not be assumed safe to run with text
@@ -1049,15 +1065,18 @@ be read as precise clinical risk estimates without post-hoc
 recalibration (e.g., Platt scaling or isotonic regression) on a larger
 held-out set.
 
-Error case analysis at the macro-F1-optimal threshold shows an
-asymmetric error profile: on dev (10/34 misclassified), errors are
-predominantly false negatives (8 FN vs.\ 2 FP); on test (17/47
-misclassified), the split is more mixed (6 FN vs.\ 11 FP). The
-dev-set false-negative skew is clinically relevant: a screening tool
-that more often misses depressed participants than it falsely flags
-healthy ones is the less safe failure mode, and this asymmetry should
-be considered when selecting a deployment threshold (a lower threshold
-trades false negatives for more false positives).
+Error case analysis (dev threshold selected on dev via macro-F1, then
+applied fixed to test---no test-label leakage) shows a consistent
+false-negative-skewed error profile on \emph{both} splits: on dev
+(10/34 misclassified), 8~FN vs.\ 2~FP; on test (14/47 misclassified,
+matching the headline test accuracy of $70.2\%$), 10~FN vs.\ 4~FP.
+This asymmetry---missing depressed participants more often than
+falsely flagging healthy ones---is clinically relevant, since it is
+the less safe failure mode for a screening tool, and it holds on both
+the tuned split and the independently held-out split rather than
+being a dev-specific artifact. This should be weighed when selecting
+a deployment threshold (a lower threshold trades false negatives for
+more false positives).
 
 \subsection{Internal Audio Feature Ablation}
 \label{sec:audio_ablation}
@@ -1207,7 +1226,9 @@ mean macro-F1 from $0.607\pm0.063$ to $0.629\pm0.021$ with markedly
 reduced seed variance, and accuracy~$=68.8\%$ on the DAIC-WOZ dev
 split---though a seed-matched paired Wilcoxon test against the
 single-task baseline does not reach significance ($p{=}0.625$,
-3/5~seed pairs favor multi-task; Section~\ref{sec:ablation}), so this
+3/5~seed pairs favor multi-task; at $n{=}5$ this exact test cannot
+reach $p<0.05$ under any outcome, so more seeds would be needed before
+this test could be informative; Section~\ref{sec:ablation}), so this
 result is reported as encouraging rather than statistically
 confirmed. Two additional design choices---cross-modal attention
 fusion and Equalized Odds fairness training---were evaluated in
