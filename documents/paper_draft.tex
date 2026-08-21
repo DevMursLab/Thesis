@@ -162,8 +162,11 @@ This paper makes the following contributions:
 
   \item \textbf{Convergent explainability:} Attention rollout,
   gradient$\times$input saliency, and occlusion ablation applied
-  independently to the same predictions. Convergence across three
-  mechanistically distinct methods provides trustworthy attribution.
+  independently to the same predictions on the dev split. Convergence
+  across three mechanistically distinct methods provides stronger
+  attribution evidence than any single method alone, though
+  Section~\ref{sec:robustness} shows this dev-split attribution
+  ranking does not fully predict test-time modality necessity.
 \end{enumerate}
 
 The remainder of the paper is organized as follows.
@@ -213,8 +216,9 @@ depression screening, most fusion approaches concatenate modality
 features \cite{williamson2016} or use late fusion without attention
 weights, providing no interpretability signal. Our work applies
 cross-modal attention with residual connections and empirically
-validates its advantage over concatenation under controlled conditions
-(Section~\ref{subsec:attn_vs_concat}).
+evaluates its advantage over concatenation under controlled
+conditions; we find a positive but not statistically significant
+trend at this sample size (Section~\ref{subsec:attn_vs_concat}).
 
 \subsection{Fairness in Clinical AI}
 
@@ -312,9 +316,10 @@ parameter, and 24~Mel Cepstral Prediction (MCEP) coefficients
 reduced F0 range, and breathier voice quality.
 
 \textbf{FORMANT} (5-dim): F1--F5 formant frequencies capturing
-vocal tract resonance. Scherer et al.\ \cite{scherer2015}
-demonstrated compressed vowel space in depressed speakers via
-reduced F1-F2 dispersion.
+vocal tract resonance. Scherer et al.\ \cite{scherer2015vowel}
+demonstrated reduced vowel space (compressed F1-F2 dispersion) in
+individuals self-reporting depression/PTSD symptoms, distinct from
+the voice-quality features described above \cite{scherer2015}.
 
 All three streams are independently z-score normalized, resampled to
 $T_a=300$ time steps via linear interpolation, and concatenated along
@@ -920,19 +925,29 @@ FACS literature on depressed affect \cite{ekman1978}, obtained
 without any clinical supervision.
 
 \textbf{Leave-one-modality-out AUC drop}: Removing audio causes the
-largest AUC decrease ($-0.03$), confirming audio dominance via
-occlusion without relying on gradient computation.
+largest AUC decrease ($-0.03$) on the dev split, consistent with
+audio dominance via occlusion without relying on gradient computation.
+This dev-split finding does not generalize cleanly to the test split,
+however: the test-time masking experiment in
+Section~\ref{sec:robustness} finds that removing audio does
+\emph{not} hurt test AUC (it improves slightly), while removing text
+does---so "most-attended/most-occlusion-sensitive on dev" and
+"most necessary for test-set generalization" are shown by this paper
+to be distinct properties, not interchangeable evidence of a single
+modality's importance.
 
 All three methods consistently rank audio as the most informative
-modality and implicate AU04 for facial attribution---convergent
-evidence that the model learned clinically plausible features rather
-than spurious correlations.
+modality \emph{on the dev split} and implicate AU04 for facial
+attribution---convergent dev-split evidence that the model learned
+clinically plausible features rather than spurious correlations,
+though Section~\ref{sec:robustness} shows this ranking does not fully
+carry over to test-time necessity.
 
 % ============================================================
 \section{Additional Validation Experiments}
 \label{sec:additional_validation}
 
-\subsection{Symptom-Level Diagnostic Validity}
+\subsection{Symptom-Level Prediction Heterogeneity}
 \label{sec:symptom}
 
 A recent large-scale reproducibility study argues that DAIC-WOZ
@@ -973,7 +988,16 @@ by the clinical constraint that a modality may be unavailable at
 inference time. To validate this claim directly rather than merely
 asserting it, we zero-mask each modality individually at test time
 (all-modality-present as baseline) and re-evaluate on both dev and
-test splits with the same trained model.
+test splits with the same trained model. The ``None (baseline)'' row
+below is this checkpoint independently re-evaluated for this
+experiment with its own macro-F1-optimal threshold search; it differs
+slightly from the headline numbers reported elsewhere (dev F1
+$0.629\pm0.021$/AUC $0.658\pm0.029$ from the 5-seed ablation mean,
+test F1 $0.585$ from the original single evaluation run) because
+those are 5-seed means or a fixed stored threshold, while this table
+reports one deterministic forward pass of the saved checkpoint with a
+freshly-searched threshold. The relative drops from this row (not its
+absolute value) are the quantity of interest here.
 
 \begin{table}[t]
 \centering
@@ -1044,10 +1068,17 @@ never isolated which family drives the audio modality's strong
 ablation performance. We re-train the single-task tri-modal model
 with the audio branch restricted to each family individually and to
 pairwise combinations, holding face, text, architecture, and training
-protocol fixed (3~seeds due to the added computational cost of six
-additional configurations; a smaller seed count than elsewhere in
-this paper, so these results should be read as suggestive rather than
-as precisely estimated as the 5-seed and 10-seed experiments above).
+protocol fixed (seeds $\{42,1,7\}$, a subset of the 5-seed ablation
+protocol, chosen to bound the computational cost of the six additional
+configurations; a smaller seed count than elsewhere in this paper, so
+these results should be read as suggestive rather than as precisely
+estimated as the 5-seed and 10-seed experiments above). This
+experiment independently re-trains the full-audio (MFCC+COVAREP+FORMANT)
+configuration under the 3-seed protocol as an internal check; its
+AUC ($0.711\pm0.055$) is close to but not identical to the 5-seed
+Table~\ref{tab:ablation} audio-only figure ($0.721\pm0.013$), the
+difference reflecting seed-count variance between the two independent
+runs of the same nominal configuration rather than an error.
 
 \begin{table}[t]
 \centering
@@ -1079,9 +1110,9 @@ a performance contribution, and instead describe their inclusion as a
 feature-engineering choice. One genuinely interesting exploratory
 finding is that FORMANT features alone---just 5 dimensions per
 frame---reach AUC~$0.688\pm0.060$, comparable to the 120-dim MFCC
-representation; this is consistent with the clinical voice-quality
-literature linking formant structure to depressed speech
-\cite{scherer2015}, and is worth follow-up with a larger, dedicated
+representation; this is consistent with the clinical literature
+linking formant structure (vowel space) to depressed speech
+\cite{scherer2015vowel}, and is worth follow-up with a larger, dedicated
 seed count rather than being treated as confirmed here.
 
 % ============================================================
@@ -1117,10 +1148,14 @@ observations support this interpretation: (1)~audio-only has the
 lowest AUC variance ($\pm0.013$), indicating it learns the most
 stable discriminative boundary; (2)~tri-modal achieves higher F1
 ($0.629$ vs.\ $0.592$) by combining weaker signals with optimized
-threshold; (3)~Leave-one-modality-out ablation shows audio removal
-causes the largest AUC drop ($-0.03$), confirming audio carries
-the primary discriminative signal. On a larger dataset, the additional
-modalities are expected to provide complementary signal rather than noise.
+threshold; (3)~leave-one-modality-out ablation on the dev split shows
+audio removal causes the largest AUC drop ($-0.03$), consistent with
+audio carrying the primary discriminative signal \emph{on dev}---though
+Section~\ref{sec:robustness}'s test-time masking experiment finds this
+does not hold on the held-out test split, where removing audio does
+not hurt and removing text is instead the critical failure mode. On a
+larger dataset, the additional modalities are expected to provide
+complementary signal rather than noise.
 
 \textbf{PHQ-8 as ground truth:} PHQ-8 is a self-report instrument,
 not a clinician-administered diagnosis. Label noise inherent in
@@ -1140,9 +1175,17 @@ become available.
 \subsection{Clinical Significance}
 
 This work addresses three open problems in computational psychiatry.
-First, multimodal coverage: ablation confirms that tri-modal fusion
-rescues cases that audio-only misclassifies, matching the multi-channel
-nature of clinical observation. Second, training-time fairness: the
+First, multimodal coverage: the ablation study's error analysis finds
+5 of 34 dev participants misclassified by the best single unimodal
+configuration (audio-only) but correctly classified by tri-modal
+fusion, and only 1 participant misclassified by every configuration
+tested. This case-level result is consistent with the multi-channel
+nature of clinical observation, even though tri-modal's \emph{aggregate}
+AUC is lower than audio-only's (Section~\ref{sec:discussion})---the two
+findings describe different things: tri-modal trades some aggregate
+discrimination for coverage of cases audio-only misses. We report
+this as a specific, checkable observation rather than a general claim
+that fusion "confirms" superiority. Second, training-time fairness: the
 Equalized Odds loss is integrated into the objective function---not
 applied post-hoc---making fairness a first-class design constraint,
 though our 10-seed evaluation shows it is insufficient for significant
@@ -1200,12 +1243,21 @@ meaningfully across the eight PHQ-8 items (presence-absence
 macro-F1~$0.209$--$0.424$) but is highest on the most generic
 affective symptoms, offering only partial evidence against the
 concern that DAIC-WOZ classifiers learn disorder-general rather than
-disorder-specific cues. Three convergent explainability methods
+disorder-specific cues. An internal audio-feature ablation
+(Section~\ref{sec:audio_ablation}) finds MFCC alone matches the full
+199-dim MFCC+COVAREP+FORMANT combination (AUC $0.710$ vs.\ $0.711$),
+supporting our decision not to claim COVAREP/FORMANT as a performance
+contribution, though FORMANT alone is a notable 5-dimensional
+exploratory result. Calibration analysis
+(Section~\ref{sec:calibration}) finds moderate probability
+miscalibration (ECE $0.102$/$0.157$ on dev/test) and a
+false-negative-skewed dev error profile, both relevant to any future
+deployment decision. Three convergent explainability methods
 (attention rollout, gradient$\times$input saliency, occlusion)
 complete the framework. Future work includes GPU training, BERT text
-encoding, and replication on larger corpora such as E-DAIC to
-determine whether the multi-task, attention, and fairness effects
-become statistically significant with more data.
+encoding, probability recalibration, and replication on larger
+corpora such as E-DAIC to determine whether the multi-task, attention,
+and fairness effects become statistically significant with more data.
 
 % ============================================================
 \section*{Ethics Statement}
@@ -1274,7 +1326,7 @@ The authors thank the reviewers for constructive feedback.
 \IEEEtriggeratref{14}
 \bibliographystyle{IEEEtran}
 
-\begin{thebibliography}{19}
+\begin{thebibliography}{20}
 
 \bibitem{who2023}
 World Health Organization, ``Depressive disorder (depression),''
@@ -1333,6 +1385,13 @@ S.~Scherer, G.~Stratou, and L.-P.~Morency,
 ``Investigating voice quality as a speaker-independent indicator
 of depression and PTSD,'' in \textit{Proc. Interspeech},
 Dresden, Germany, 2015, pp.~847--851.
+
+\bibitem{scherer2015vowel}
+S.~Scherer, J.~Gratch, A.~Rizzo, and L.-P.~Morency,
+``Self-reported symptoms of depression and PTSD are associated with
+reduced vowel space in screening interviews,''
+\textit{IEEE Trans. Affective Comput.}, vol.~6, no.~4,
+pp.~1--10, 2015.
 
 \bibitem{hardt2016}
 M.~Hardt, E.~Price, and N.~Srebro,
