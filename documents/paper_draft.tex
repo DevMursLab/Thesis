@@ -54,12 +54,17 @@ controlled conditions. We present a tri-modal (facial action units,
 acoustic features, transcript text) depression-risk framework on the
 DAIC-WOZ corpus, using a single \texttt{ConfigurableFusionModel}
 class across seven modality subsets (5~seeds each) to isolate genuine
-modality contribution from architectural confounds. Our primary
-validated result is symptom-level \emph{multi-task learning}---jointly
-predicting the binary label, PHQ-8 score, and eight symptom
-items---which raises macro-F1 from $0.607\pm0.063$ to
-$0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
-reduced seed variance. On the held-out test split ($N{=}47$), the
+modality contribution from architectural confounds. Our most
+promising observed result is symptom-level \emph{multi-task
+learning}---jointly predicting the binary label, PHQ-8 score, and
+eight symptom items---which raises mean macro-F1 from $0.607\pm0.063$
+to $0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
+reduced seed variance; however, a paired Wilcoxon test matching each
+multi-task seed against the single-task baseline run from the same
+seed does not reach significance ($p{=}0.625$, multi-task wins
+3/5~pairs), so we report this as an encouraging but statistically
+unconfirmed direction rather than a validated headline result. On
+the held-out test split ($N{=}47$), the
 model achieves F1\,$=0.585$ and AUC\,$=0.706$, exceeding the dev AUC
 and indicating generalization beyond the dev set; male and female
 TPR are numerically equal on this split (0.286 each), though both
@@ -125,12 +130,17 @@ This paper makes the following contributions:
   attributing performance differences solely to modalities, not
   incidental architectural choices.
 
-  \item \textbf{Symptom-level multi-task learning (primary result):}
+  \item \textbf{Symptom-level multi-task learning (most promising,
+  not statistically confirmed):}
   Joint prediction of binary label, PHQ-8 severity score, and all
-  eight PHQ-8 symptom items reduces variance and raises F1 from
-  $0.607\pm0.063$ (single-task baseline) to $0.629\pm0.021$
-  (proposed model), validated across 5~seeds with consistent
-  per-seed improvement.
+  eight PHQ-8 symptom items reduces seed variance and raises mean F1
+  from $0.607\pm0.063$ (single-task baseline) to $0.629\pm0.021$
+  (proposed model) across 5~seeds. A paired Wilcoxon test matching
+  seeds between the two models does not reach significance
+  ($p{=}0.625$, 3/5~pairs favor multi-task;
+  Section~\ref{sec:ablation}), so we report the mean improvement and
+  variance reduction as encouraging observations rather than a
+  statistically validated effect.
 
   \item \textbf{Exploratory findings on two design choices:}
   Cross-modal attention and Equalized Odds fairness training are
@@ -140,13 +150,15 @@ This paper makes the following contributions:
   and inconclusive results that characterize the limits of these
   techniques on small clinical datasets.
 
-  \item \textbf{Modality-dropout regularization:} Training-time
-  modality dropout ($p{=}0.15$ per channel) is included as a
-  regularizer motivated by the real clinical constraint that one
-  or more modalities may be unavailable at inference time. We did
-  not evaluate inference-time performance with a modality masked
-  out, so this is reported as a design choice rather than a
-  validated robustness result.
+  \item \textbf{Missing-modality robustness (mixed result):}
+  Training-time modality dropout ($p{=}0.15$ per channel) is
+  evaluated directly by zero-masking each modality at inference
+  time (Section~\ref{sec:robustness}). The model tolerates losing
+  face with negligible cost and partially tolerates losing audio,
+  but loses most of its discriminative power when text is removed
+  on the held-out test split (AUC $0.706\to0.435$). We report this
+  as a partial, modality-dependent robustness result rather than a
+  uniform one.
 
   \item \textbf{Convergent explainability:} Attention rollout,
   gradient$\times$input saliency, and occlusion ablation applied
@@ -539,24 +551,44 @@ Tri-Modal (single-task) & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ &
 \end{figure}
 
 \noindent\textbf{Statistical note:} The proposed multi-task model
-achieves F1~$=0.629\pm0.021$,
-a validated $+0.022$ improvement over the single-task tri-modal baseline
-($0.607\pm0.063$). The reduced standard deviation ($\pm0.021$
-vs.\ $\pm0.063$) indicates increased training stability from multi-task
-regularization. We did not run a paired significance test for this
-specific comparison; the evidence for the improvement is the consistency
-of the gain across all five seeds
-(range: 0.598--0.662, Fig.~\ref{fig:seeds}), which provides seed-level
-evidence of genuine signal rather than a single lucky draw
-\cite{bouthillier2021}, though we stop short of a formal significance
-claim. Fig.~\ref{fig:p7p8} summarizes the mean-level
-comparison between the two models.
+achieves mean F1~$=0.629\pm0.021$, a $+0.022$ improvement in mean
+over the single-task tri-modal baseline ($0.607\pm0.063$), with
+markedly reduced seed variance ($\pm0.021$ vs.\ $\pm0.063$), and all
+five multi-task seeds individually exceed the single-task baseline's
+\emph{mean} of $0.607$ (Fig.~\ref{fig:seeds}). This is a weaker claim
+than paired seed-for-seed superiority, so we additionally recovered
+the previously-unreported per-seed single-task F1 values (by
+re-running that configuration for the same five seeds) and ran a
+paired Wilcoxon signed-rank test matching each multi-task run against
+the single-task run from the \emph{same} seed. That test does
+\emph{not} reach significance ($p{=}0.625$, $n{=}5$): the multi-task
+model wins only 3 of the 5 matched pairs (per-seed differences:
+$-0.006, -0.076, +0.072, +0.042, +0.079$). We also note this
+comparison bundles two simultaneous changes---the multi-task
+prediction heads and the extended 199-dim MFCC+COVAREP+FORMANT audio
+features, versus the single-task baseline's 120-dim MFCC-only
+audio---so even a significant result would not cleanly isolate
+multi-task learning as the causal factor. We therefore revise our
+earlier framing: the mean improvement and variance reduction are
+genuine and reproducible observations (the re-run single-task mean of
+$0.607\pm0.063$ exactly matches the original), but they do not
+constitute a statistically validated result at this sample size. We
+report this finding alongside the cross-modal-attention and
+fairness-loss results in Section~\ref{sec:fairness} as evidence of
+the same underlying pattern: $N{=}34$ is too small to statistically
+confirm any of the three design choices evaluated in this paper, even
+when the observed direction is consistently positive---a small-$N$
+benchmarking pitfall documented more generally by
+\cite{bouthillier2021}. Fig.~\ref{fig:p7p8}
+summarizes the mean-level comparison between the two models.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig4_seed_consistency.png}
-  \caption{Per-seed F1 for the proposed model (all 5~seeds above
-    single-task baseline mean of~0.607).
+  \caption{Per-seed F1 for the proposed model (all 5~seeds above the
+    single-task baseline's \emph{mean} of~0.607; a seed-matched paired
+    test against the baseline's own per-seed values is not
+    significant, $p{=}0.625$---see Statistical note above).
     Shaded band: $\pm1$ std around proposed model mean (0.629).}
   \label{fig:seeds}
 \end{figure}
@@ -897,6 +929,162 @@ evidence that the model learned clinically plausible features rather
 than spurious correlations.
 
 % ============================================================
+\section{Additional Validation Experiments}
+\label{sec:additional_validation}
+
+\subsection{Symptom-Level Diagnostic Validity}
+\label{sec:symptom}
+
+A recent large-scale reproducibility study argues that DAIC-WOZ
+classifiers may largely learn \emph{disorder-general} distress cues
+(flat affect, low energy, negative language) rather than markers
+specific to individual depressive symptoms, since most published
+systems are evaluated only on the aggregate binary label. Because our
+model predicts all eight PHQ-8 symptom items individually, we can test
+this directly: if the model has learned only one generic distress
+signal, presence/absence accuracy should be roughly uniform across
+all eight items; if it captures symptom-specific structure, accuracy
+should vary meaningfully by symptom.
+
+On the dev split, presence/absence macro-F1 ranges from $0.209$
+(Psychomotor Change) to $0.424$ (Tired/Low Energy) across the eight
+symptoms---a spread of $0.215$, not the uniform profile expected from
+a single generic-distress signal. However, the result is not
+unambiguously favorable: the two best-predicted symptoms (Tired/Low
+Energy, $0.424$; Feeling Down/Depressed, $0.393$) are themselves the
+most generic affective/energy markers, while more specific items
+(Psychomotor Change, $0.209$; Concentration Problems and No
+Interest/Pleasure, both $0.320$) are predicted worse than average. We
+therefore report this as partial evidence against a purely
+disorder-general account---performance is not uniform---while noting
+that the model still performs best on the most generic symptoms,
+which is directionally consistent with, not a clean refutation of,
+the disorder-general-cues concern. Exact 4-class severity accuracy is
+low across all symptoms ($0.029$--$0.412$), so these findings should
+be read as evidence about \emph{which symptoms carry a detectable
+presence/absence signal}, not as evidence of clinically usable
+symptom-severity grading.
+
+\subsection{Missing-Modality Robustness (Test-Time Masking)}
+\label{sec:robustness}
+
+Modality dropout is used during training as a regularizer, motivated
+by the clinical constraint that a modality may be unavailable at
+inference time. To validate this claim directly rather than merely
+asserting it, we zero-mask each modality individually at test time
+(all-modality-present as baseline) and re-evaluate on both dev and
+test splits with the same trained model.
+
+\begin{table}[t]
+\centering
+\renewcommand{\arraystretch}{1.15}
+\caption{Test-Time Missing-Modality Robustness}
+\label{tab:robustness}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Masked} & \multicolumn{2}{c}{\textbf{Dev ($N{=}34$)}}
+  & \multicolumn{2}{c}{\textbf{Test ($N{=}47$)}} \\
+\textbf{Modality} & \textbf{F1} & \textbf{AUC} & \textbf{F1} & \textbf{AUC} \\
+\midrule
+None (baseline)  & 0.622 & 0.663 & 0.603 & 0.706 \\
+Face masked      & 0.622 & 0.655 & 0.621 & 0.712 \\
+Audio masked     & 0.583 & 0.580 & 0.681 & 0.725 \\
+Text masked      & 0.555 & 0.610 & 0.484 & \textbf{0.435} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result is a partial, modality-dependent robustness profile rather
+than a uniform one. Removing face costs almost nothing on either
+split, consistent with face being the weakest single modality in the
+ablation study. Removing audio costs moderately on dev but,
+surprisingly, does not hurt (and slightly helps) on the test split.
+Removing text is the critical case: dev F1 drops modestly, but test
+AUC collapses from $0.706$ to $0.435$---below chance---indicating the
+model's test-set generalization depends heavily on text being present,
+even though attention-rollout (Section~\ref{sec:xai}) ranks audio as
+the most-attended modality on average. We interpret this as evidence
+that average attention weight and inference-time necessity are
+distinct properties: a modality can receive lower average attention
+while still being critical for cross-modal integration at test time.
+Practically, this means the modality-dropout regularizer does
+\emph{not} deliver uniform graceful degradation, and a deployed
+version of this system should not be assumed safe to run with text
+unavailable without further validation.
+
+\subsection{Calibration and Error Analysis}
+\label{sec:calibration}
+
+Beyond discrimination (AUC) and thresholded classification (F1), we
+assess whether the model's predicted probabilities are meaningful as
+probabilities. We compute the Brier score and Expected Calibration
+Error (ECE, 5 equal-width bins) on both splits. Dev: Brier
+$=0.233$, ECE$=0.102$. Test: Brier$=0.227$, ECE$=0.157$. These
+indicate moderate miscalibration---predicted probabilities should not
+be read as precise clinical risk estimates without post-hoc
+recalibration (e.g., Platt scaling or isotonic regression) on a larger
+held-out set.
+
+Error case analysis at the macro-F1-optimal threshold shows an
+asymmetric error profile: on dev (10/34 misclassified), errors are
+predominantly false negatives (8 FN vs.\ 2 FP); on test (17/47
+misclassified), the split is more mixed (6 FN vs.\ 11 FP). The
+dev-set false-negative skew is clinically relevant: a screening tool
+that more often misses depressed participants than it falsely flags
+healthy ones is the less safe failure mode, and this asymmetry should
+be considered when selecting a deployment threshold (a lower threshold
+trades false negatives for more false positives).
+
+\subsection{Internal Audio Feature Ablation}
+\label{sec:audio_ablation}
+
+The clinical audio representation combines three feature families
+(MFCC, COVAREP, FORMANT; Section~\ref{sec:features}), but the paper
+never isolated which family drives the audio modality's strong
+ablation performance. We re-train the single-task tri-modal model
+with the audio branch restricted to each family individually and to
+pairwise combinations, holding face, text, architecture, and training
+protocol fixed (3~seeds due to the added computational cost of six
+additional configurations; a smaller seed count than elsewhere in
+this paper, so these results should be read as suggestive rather than
+as precisely estimated as the 5-seed and 10-seed experiments above).
+
+\begin{table}[t]
+\centering
+\renewcommand{\arraystretch}{1.15}
+\caption{Internal Audio Feature Ablation (Dev, 3~seeds)}
+\label{tab:audio_ablation}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Audio Subset} & \textbf{Dim} & \textbf{AUC (mean$\pm$std)} \\
+\midrule
+MFCC only                      & 120 & $0.710\pm0.053$ \\
+COVAREP only                   &  74 & $0.619\pm0.084$ \\
+FORMANT only                   &   5 & $0.688\pm0.060$ \\
+MFCC + COVAREP                 & 194 & $0.682\pm0.033$ \\
+COVAREP + FORMANT               &  79 & $0.569\pm0.039$ \\
+MFCC + COVAREP + FORMANT (full) & 199 & $0.711\pm0.055$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MFCC alone (AUC~$0.710\pm0.053$) achieves essentially the same
+discrimination as the full 199-dim combination
+(AUC~$0.711\pm0.055$)---the addition of COVAREP and FORMANT features
+does not produce a clear AUC improvement over MFCC in isolation, and
+combining MFCC with COVAREP alone is numerically \emph{worse}
+($0.682$) than MFCC alone. This is consistent with our earlier
+decision (Section~\ref{sec:features}) not to claim COVAREP/FORMANT as
+a performance contribution, and instead describe their inclusion as a
+feature-engineering choice. One genuinely interesting exploratory
+finding is that FORMANT features alone---just 5 dimensions per
+frame---reach AUC~$0.688\pm0.060$, comparable to the 120-dim MFCC
+representation; this is consistent with the clinical voice-quality
+literature linking formant structure to depressed speech
+\cite{scherer2015}, and is worth follow-up with a larger, dedicated
+seed count rather than being treated as confirmed here.
+
+% ============================================================
 \section{Discussion}
 \label{sec:discussion}
 
@@ -968,22 +1156,31 @@ pitch), providing an evidence chain that a clinician can audit.
 \label{sec:conclusion}
 
 We presented a tri-modal depression risk detection framework on
-DAIC-WOZ whose primary validated result is symptom-level PHQ-8
+DAIC-WOZ whose most promising observed result is symptom-level PHQ-8
 multi-task learning: a controlled ablation
 (7~configurations\,$\times$\,5~seeds\,=\,35~runs, bootstrap~CI,
 paired bootstrap significance) shows the multi-task model raises
-macro-F1 from $0.607\pm0.063$ to $0.629\pm0.021$ with markedly
+mean macro-F1 from $0.607\pm0.063$ to $0.629\pm0.021$ with markedly
 reduced seed variance, and accuracy~$=68.8\%$ on the DAIC-WOZ dev
-split. Two additional design choices---cross-modal attention fusion
-and Equalized Odds fairness training---were evaluated in 10-seed
-paired Wilcoxon experiments as exploratory, not headline, contributions.
+split---though a seed-matched paired Wilcoxon test against the
+single-task baseline does not reach significance ($p{=}0.625$,
+3/5~seed pairs favor multi-task; Section~\ref{sec:ablation}), so this
+result is reported as encouraging rather than statistically
+confirmed. Two additional design choices---cross-modal attention
+fusion and Equalized Odds fairness training---were evaluated in
+10-seed paired Wilcoxon experiments as exploratory, not headline,
+contributions.
 
-The results are honest rather than favorable: (1)~cross-modal
+The results are honest rather than favorable, and all three design
+choices we evaluated statistically show the same pattern---a positive
+mean trend that does not reach significance at this sample size:
+(1)~the multi-task improvement described above does not reach
+significance in a seed-matched paired test ($p{=}0.625$); (2)~cross-modal
 attention shows a positive trend over concatenation (F1\,$+0.024$,
 AUC wins 6/10~seeds) but does not reach statistical significance at
-$N{=}34$ ($p{=}0.496$); (2)~the Equalized Odds loss does not
+$N{=}34$ ($p{=}0.496$); (3)~the Equalized Odds loss does not
 significantly reduce the gender TPR gap at this sample size
-($p{=}0.813$, wins 3/10~seeds). We report both as negative/inconclusive
+($p{=}0.813$, wins 3/10~seeds). We report all three as negative/inconclusive
 findings that characterize the limits of these techniques on small
 clinical cohorts, rather than reframing them as successes.
 Test-split evaluation ($N{=}47$) yields F1\,$=0.585$ and
@@ -994,12 +1191,21 @@ nominally~0.000, but pooled 10-fold cross-validation across all
 result is not stable (mean TPR gap $0.415\pm0.211$ across folds),
 underscoring that fixed-split fairness metrics on $N{<}50$ cohorts
 should be corroborated with resampling before being reported as
-findings. Modality dropout ($p{=}0.15$)
-and three convergent explainability methods (attention rollout,
-gradient$\times$input saliency, occlusion) complete the framework.
-Future work includes GPU training, BERT text encoding, and
-replication on larger corpora such as E-DAIC to determine whether
-attention and fairness effects become significant with more data.
+findings. Test-time missing-modality masking
+(Section~\ref{sec:robustness}) shows the modality-dropout regularizer
+gives partial, not uniform, robustness: face is dispensable, but
+removing text collapses test AUC from~0.706 to~0.435. Symptom-level
+breakdown (Section~\ref{sec:symptom}) finds accuracy varies
+meaningfully across the eight PHQ-8 items (presence-absence
+macro-F1~$0.209$--$0.424$) but is highest on the most generic
+affective symptoms, offering only partial evidence against the
+concern that DAIC-WOZ classifiers learn disorder-general rather than
+disorder-specific cues. Three convergent explainability methods
+(attention rollout, gradient$\times$input saliency, occlusion)
+complete the framework. Future work includes GPU training, BERT text
+encoding, and replication on larger corpora such as E-DAIC to
+determine whether the multi-task, attention, and fairness effects
+become statistically significant with more data.
 
 % ============================================================
 \section*{Ethics Statement}
