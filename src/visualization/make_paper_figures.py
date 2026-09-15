@@ -349,6 +349,186 @@ def fig_attention_vs_concat():
     print("  fig8_attention_vs_concat.png")
 
 
+def fig_shortcut_audit():
+    """Interviewer-prompt shortcut audit: participant-only vs both vs Ellie-only.
+
+    All values from results/metrics/interviewer_shortcut.json (5 seeds,
+    matched participant set across all three conditions).
+    """
+    d = json.load(open(METRICS / "interviewer_shortcut.json"))
+    conds = ["participant", "both", "ellie"]
+    labels = ["Participant\nonly", "Participant\n+ Ellie", "Ellie only\n(no patient words)"]
+    colors = [TEAL, GOLD, CORAL]
+
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3.8))
+
+    for ax, split, title in zip(
+        axes, ["dev", "test"],
+        [f"Dev split (N={d['matched_n']['dev']})",
+         f"Held-out test split (N={d['matched_n']['test']})"]):
+        means = [d["conditions"][c][f"{split}_auc_mean"] for c in conds]
+        stds = [d["conditions"][c][f"{split}_auc_std"] for c in conds]
+        x = np.arange(3)
+        bars = ax.bar(x, means, yerr=stds, capsize=4, color=colors,
+                      edgecolor="black", linewidth=0.6)
+        ax.axhline(0.5, color="black", ls="--", lw=1.2, zorder=0)
+        ax.text(2.45, 0.505, "chance", fontsize=7, ha="right", va="bottom")
+        for bar, m, s in zip(bars, means, stds):
+            # place the label clear of the error-bar cap, not just the bar top
+            ax.text(bar.get_x() + bar.get_width() / 2, m + s + 0.028,
+                    f"{m:.3f}", ha="center", fontsize=8, weight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_ylabel("AUC")
+        ax.set_ylim(0, 1.0)
+        ax.set_title(title, fontsize=9)
+
+    fig.suptitle(
+        "Interviewer-Prompt Shortcut Audit  (identical model, encoders and 5 seeds; "
+        "only the speaker's transcript turns differ)\n"
+        "A model that never sees a single patient word outperforms the "
+        "participant-only model on both splits.",
+        fontsize=8.5, weight="bold")
+    plt.tight_layout()
+    plt.savefig(FIGURES / "fig9_shortcut_audit.png")
+    plt.close()
+    print("  fig9_shortcut_audit.png")
+
+
+def fig_cross_corpus():
+    """Zero-shot cross-corpus collapse: EATD (audio) and WU3D (text)."""
+    e = json.load(open(METRICS / "cross_corpus_eatd.json"))
+    w = json.load(open(METRICS / "cross_corpus_wu3d.json"))
+
+    probes = [
+        ("Audio probe\nEATD-Corpus", e["in_domain_dev_auc"], e["auc"],
+         e["auc_ci95"], e["n_test"]),
+        ("Text probe\nWU3D (Weibo)", w["in_domain_test_auc"], w["auc"],
+         w["auc_ci95"], w["n_test"]),
+    ]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.9))
+    x = np.arange(len(probes))
+    width = 0.34
+
+    in_dom = [p[1] for p in probes]
+    cross = [p[2] for p in probes]
+    err = np.array([[p[2] - p[3][0] for p in probes],
+                    [p[3][1] - p[2] for p in probes]])
+
+    ax.bar(x - width / 2, in_dom, width, label="In-domain (DAIC-WOZ)",
+           color=NAVY, edgecolor="black", linewidth=0.6)
+    ax.bar(x + width / 2, cross, width, yerr=err, capsize=5,
+           label="Zero-shot cross-corpus", color=CORAL,
+           edgecolor="black", linewidth=0.6)
+
+    ax.axhline(0.5, color="black", ls="--", lw=1.2, zorder=0)
+    ax.text(len(probes) - 0.52, 0.508, "chance", fontsize=7, ha="right", va="bottom")
+
+    for xi, v in zip(x - width / 2, in_dom):
+        ax.text(xi, v + 0.02, f"{v:.3f}", ha="center", fontsize=8, weight="bold")
+    for xi, p in zip(x + width / 2, probes):
+        ax.text(xi, p[3][1] + 0.02,
+                f"{p[2]:.3f}\n[{p[3][0]:.3f}, {p[3][1]:.3f}]",
+                ha="center", fontsize=7)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{p[0]}\n(N={p[4]:,})" for p in probes], fontsize=8.5)
+    ax.set_ylabel("AUC")
+    ax.set_ylim(0, 1.0)
+    ax.legend(fontsize=8, loc="upper right")
+    ax.set_title(
+        "Zero-shot cross-corpus generalization  (error bars: 95% bootstrap CI, 2,000 resamples)\n"
+        "Both modalities collapse to chance on an independent corpus in a different language.",
+        fontsize=9, weight="bold")
+    plt.tight_layout()
+    plt.savefig(FIGURES / "fig10_cross_corpus.png")
+    plt.close()
+    print("  fig10_cross_corpus.png")
+
+
+def fig_learning_curve():
+    """Tri-modal AUC/F1 vs. training-set size (subsampled from the 107-participant
+    train pool, fixed dev set, 3 seeds per fraction)."""
+    d = json.load(open(METRICS / "learning_curve.json"))
+    fracs = sorted(d["fractions"].keys(), key=float)
+    ns = [d["fractions"][f]["n_train"] for f in fracs]
+    auc_m = [d["fractions"][f]["auc_mean"] for f in fracs]
+    auc_s = [d["fractions"][f]["auc_std"] for f in fracs]
+    f1_m = [d["fractions"][f]["f1_mean"] for f in fracs]
+    f1_s = [d["fractions"][f]["f1_std"] for f in fracs]
+
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.errorbar(ns, auc_m, yerr=auc_s, marker="o", color=NAVY, capsize=4,
+               linewidth=2, markersize=7, label="AUC")
+    ax.errorbar(ns, f1_m, yerr=f1_s, marker="s", color=CORAL, capsize=4,
+               linewidth=2, markersize=7, label="F1")
+    ax.axhline(0.5, color="black", ls="--", lw=1, alpha=0.6, zorder=0)
+    ax.text(ns[0], 0.51, "chance", fontsize=7)
+    ax.set_xlabel("Training-set size (participants, subsampled from N=107 pool)")
+    ax.set_ylabel("Score (fixed dev set, N=33)")
+    ax.set_ylim(0, 1.0)
+    ax.legend(fontsize=9, loc="lower right")
+    ax.set_title(
+        "Learning Curve: Tri-Modal Model vs. Training-Set Size  (3 seeds per point)\n"
+        "AUC rises with N and has not visibly plateaued at N=107 -- "
+        "more participants would likely help.",
+        fontsize=9.5, weight="bold")
+    plt.tight_layout()
+    plt.savefig(FIGURES / "fig11_learning_curve.png")
+    plt.close()
+    print("  fig11_learning_curve.png")
+
+
+def fig_sentinel_fix():
+    """OpenFace -100 sentinel contamination: effect on face-only and tri-modal."""
+    f = json.load(open(METRICS / "face_sentinel_ablation.json"))
+    t = json.load(open(METRICS / "trimodal_sentinel_ablation.json"))
+
+    fig, axes = plt.subplots(1, 2, figsize=(9.2, 4.0))
+
+    for ax, d, title, note in zip(
+            axes, [f, t],
+            ["Face-only configuration", "Tri-modal configuration"],
+            ["5/5 seeds improved\nWilcoxon $p$=0.031, $d$=1.43",
+             "2/5 seeds improved\nWilcoxon $p$=0.313 (n.s.)"]):
+        arms = ["original", "cleaned"]
+        means = [d[a]["auc_mean"] for a in arms]
+        stds = [d[a]["auc_std"] for a in arms]
+        x = np.arange(2)
+        bars = ax.bar(x, means, yerr=stds, capsize=5,
+                      color=[CORAL, TEAL], edgecolor="black", linewidth=0.7,
+                      width=0.55)
+        # per-seed points, paired
+        for i, a in enumerate(arms):
+            pts = d[a]["per_seed_auc"]
+            ax.scatter([i] * len(pts), pts, color="black", s=14, zorder=3, alpha=0.75)
+        for p_o, p_c in zip(d["original"]["per_seed_auc"], d["cleaned"]["per_seed_auc"]):
+            ax.plot([0, 1], [p_o, p_c], color="gray", lw=0.8, alpha=0.55, zorder=2)
+
+        ax.axhline(0.5, color="black", ls="--", lw=1.1, zorder=0)
+        ax.text(1.42, 0.508, "chance", fontsize=7, ha="right")
+        for bar, m, s in zip(bars, means, stds):
+            ax.text(bar.get_x() + bar.get_width() / 2, m + s + 0.035,
+                    f"{m:.3f}", ha="center", fontsize=9, weight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels(["with $-100$\nsentinels\n(original)",
+                            "sentinel frames\nremoved\n(fixed)"], fontsize=8.5)
+        ax.set_ylabel("Dev AUC")
+        ax.set_ylim(0, 1.0)
+        ax.set_title(f"{title}\n{note}", fontsize=9)
+
+    fig.suptitle(
+        "OpenFace $-100$ Missing-Data Sentinel: Effect on Depression Classification\n"
+        "Sentinels survive the confidence filter and, under per-participant z-scoring, "
+        "compress the real AU signal ~79$\\times$.",
+        fontsize=9, weight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    plt.savefig(FIGURES / "fig12_sentinel_fix.png")
+    plt.close()
+    print("  fig12_sentinel_fix.png")
+
+
 def main():
     print("Generating publication-quality figures...")
     fig_architecture()
@@ -359,7 +539,11 @@ def main():
     fig_fairness_radar()
     fig_fairness_before_after()
     fig_attention_vs_concat()
-    print(f"\nAll 8 figures saved to {FIGURES}/")
+    fig_shortcut_audit()
+    fig_cross_corpus()
+    fig_learning_curve()
+    fig_sentinel_fix()
+    print(f"\nAll 12 figures saved to {FIGURES}/")
 
 
 if __name__ == "__main__":

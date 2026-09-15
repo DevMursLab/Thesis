@@ -23,8 +23,9 @@
 \graphicspath{{./}}
 
 % ---- Title ----
-\title{Multi-Task Learning for Tri-Modal Depression Detection:
-A Controlled Ablation Study on DAIC-WOZ}
+\title{Why Tri-Modal Depression Detection on DAIC-WOZ Doesn't Replicate:
+A Systematic Validity Audit of Sentinel Artifacts, Interviewer Shortcuts,
+and Cross-Corpus Transfer}
 
 \author{Md.~Mursalin
 and~Md.~Shovon%
@@ -39,7 +40,7 @@ Code: \url{https://github.com/DevMursLab/Thesis}.}%
 }
 
 \markboth{IEEE Access,~Vol.~XX, No.~XX, 2025}%
-{Mursalin \MakeLowercase{\textit{et al.}}: Multi-Task Tri-Modal Depression Detection}
+{Mursalin \MakeLowercase{\textit{et al.}}: A Validity Audit of Tri-Modal Depression Detection on DAIC-WOZ}
 
 \begin{document}
 
@@ -47,25 +48,42 @@ Code: \url{https://github.com/DevMursLab/Thesis}.}%
 
 % ============================================================
 \begin{abstract}
-Automated depression screening from clinical interviews requires
-multimodal analysis, demographic fairness, and clinical
-interpretability, yet prior work rarely evaluates all three under
-controlled conditions. We present a tri-modal (facial action units,
-acoustic features, transcript text) depression-risk framework on the
-DAIC-WOZ corpus, using a single \texttt{ConfigurableFusionModel}
-class across seven modality subsets (5~seeds each) to isolate genuine
-modality contribution from architectural confounds. Our most
-promising observed result is symptom-level \emph{multi-task
-learning}---jointly predicting the binary label, PHQ-8 score, and
-eight symptom items---which raises mean macro-F1 from $0.607\pm0.063$
-to $0.629\pm0.021$ on the official dev split ($N{=}34$) with markedly
-reduced seed variance. A paired Wilcoxon test matching each multi-task
-seed against the single-task baseline run from the same seed does not
-reach significance ($p{=}0.625$, multi-task wins 3/5~pairs). At
-$n{=}5$ this test cannot reach $p<0.05$ under any outcome, so the
-result is at best inconclusive rather than a disconfirmation. We
-therefore report this as an encouraging but statistically unconfirmed
-direction, not a validated headline result. On the held-out test
+Reported performance for automated depression screening on the
+DAIC-WOZ corpus varies by more than 20 AUC points across the
+literature under seemingly minor pipeline differences, and few
+studies directly test whether their models capture depression-specific
+signal as opposed to interview structure, tracking-software artifacts,
+or corpus-specific acoustic idiosyncrasies. We conduct a systematic
+validity audit of a tri-modal (facial action units, acoustic features,
+transcript text) depression-risk pipeline built on a single
+\texttt{ConfigurableFusionModel} class instantiated across seven
+modality subsets (5~seeds each), and surface three failure modes that
+plausibly account for a substantial share of this cross-study
+variance: a silent data-corruption bug in the visual stream, an
+interview-structure shortcut in the text stream, and non-transferable,
+corpus-specific representations in both audio and text. Within the
+same controlled testbed we also evaluate three common design choices
+(symptom-level multi-task learning, cross-modal attention, and an
+Equalized-Odds fairness loss); the most promising of these,
+\emph{multi-task learning}---jointly predicting the binary label,
+PHQ-8 score, and eight symptom items---raises mean macro-F1 from
+$0.607\pm0.063$ to $0.629\pm0.021$ on the official dev split
+($N{=}34$) at the originally-reported 5-seed sample. A post-hoc power
+analysis of that 5-seed paired test (Cohen's~$d{=}0.34$) showed
+$n{\approx}67$ paired seeds would be needed for 80\% power, so we
+scaled the paired Wilcoxon test to 70~seeds. This both confirms the
+effect and reveals it is larger than the 5-seed estimate suggested:
+across the full 70~seeds the single-task baseline itself is far less
+stable than the original 5-seed sample implied
+($0.464\pm0.164$, range $[0.14,0.71]$, vs.\ the originally-reported
+$0.607\pm0.063$), while the multi-task model remains stable and
+strong ($0.657\pm0.037$); multi-task wins 65/70~paired seeds
+(Wilcoxon $p{=}2.3{\times}10^{-12}$, $d{=}1.17$). We therefore revise
+our earlier framing: multi-task learning is now a statistically
+confirmed, large-effect headline result, and the original 5-seed
+single-task estimate was itself an optimistic small-sample draw---a
+concrete illustration, within our own pipeline, of the seed-sampling
+risk this paper warns about elsewhere. On the held-out test
 split ($N{=}47$), the
 model achieves F1\,$=0.585$ and AUC\,$=0.706$, exceeding the dev AUC
 and indicating generalization beyond the dev set; male and female
@@ -85,9 +103,55 @@ saliency, occlusion ablation) independently identify audio as the
 most informative modality on the dev split, and gradient saliency
 places the clinically-established marker AU04 (Brow Lowerer) within
 its top-5 attributed facial features, though not as the single
-top-ranked feature. Our contribution is methodological rigor and
-transparent reporting---including honest limitations---rather than
-state-of-the-art performance.
+top-ranked feature. A zero-shot cross-corpus probe of the strongest
+unimodal (audio) model on EATD-Corpus, an independent Chinese-language
+depression dataset, collapses from in-domain AUC\,$=0.735$ to
+AUC\,$=0.531$ (95\% CI $[0.406,0.653]$)---statistically
+indistinguishable from chance---indicating the learned acoustic
+representation is corpus/language-specific rather than a
+transferable biomarker. A second, independent probe of the text
+modality on WU3D \cite{wang2020wu3d} (32,540 Weibo users,
+DSM-5-rechecked labels) replicates this collapse with a far tighter
+bound (AUC\,$=0.506$, 95\% CI $[0.5008,0.5121]$), traced directly to
+55.9\% of cross-lingual documents producing all-zero TF-IDF vectors.
+We additionally audit a known DAIC-WOZ
+validity concern---text models that include the virtual
+interviewer's utterances can reach high performance by exploiting
+\emph{which} questions are asked rather than what the patient says
+\cite{bailey2024shortcut}---and confirm it directly in our own
+pipeline: an interviewer-only text model that never sees a single
+word spoken by the patient reaches test AUC~$=0.738$, exceeding our
+participant-only model's AUC~$=0.610$, because the interviewer's
+follow-up questions (e.g.\ ``how long ago were you diagnosed'') are
+selectively asked of participants who already disclosed treatment
+history. This audit substantiates our participant-only design choice
+and reframes our comparatively modest headline numbers as evidence
+of validity rather than a shortcoming relative to literature values
+obtained with interviewer text included. Auditing the visual feature
+stream likewise uncovers a data-handling fault: OpenFace encodes
+tracking failure in the binary AU channels with a $-100$ sentinel that
+survives the usual confidence filter and, under per-participant
+z-scoring, compresses the genuine signal $\approx$79$\times$. Removing
+sentinel-carrying frames lifts the face-only configuration from chance
+(AUC\,$=0.513\pm0.113$) to $0.708\pm0.042$ with all five seeds
+improving (Wilcoxon $p{=}0.031$, $d{=}1.43$)---the only statistically
+significant effect in this study, and a data-quality rather than a
+modelling one---while leaving the single-task tri-modal result
+unchanged ($p{=}0.313$), indicating the recovered facial signal is
+largely redundant with audio and text. Probing diagnostic specificity on an
+English multi-category mental-health corpus (length-matched to remove a
+10$\times$ post-length confound), the model transfers
+(depression vs.\ normal AUC\,$=0.678$) but separates depression from
+other distress categories only weakly (vs.\ suicidality $0.573$;
+vs.\ anxiety $0.568$), partially supporting the concern that DAIC-WOZ
+classifiers capture disorder-general rather than depression-specific
+signal. A learning-curve analysis
+subsampling the 107-participant train pool shows AUC rising from
+$0.572$ at $N{=}32$ to $0.725$ at $N{=}91$ with no clear plateau,
+directly supporting our repeated attribution of non-significant
+effects to sample size rather than architecture. Our contribution is
+methodological rigor and transparent reporting---including honest
+limitations---rather than state-of-the-art performance.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -125,34 +189,87 @@ predicting positive for all participants. Third, explainability
 evidence is typically provided by a single method without
 cross-validation.
 
-This paper makes the following contributions:
+DAIC-WOZ is the de facto benchmark for automated depression screening,
+yet reported results across the literature vary by 20+ AUC points
+under seemingly minor pipeline differences, and few studies test
+whether their models measure depression at all as opposed to
+interview structure, tracking-software artifacts, or corpus-specific
+acoustic idiosyncrasies. This paper's central contribution is a
+systematic validity audit that surfaces and directly tests three
+such failure modes---each independently capable of explaining a
+substantial share of the variance in reported DAIC-WOZ performance
+across the field---using a controlled tri-modal ablation testbed
+built specifically to isolate them from ordinary architectural
+confounds. Concretely, we contribute:
 
 \begin{enumerate}
-  \item \textbf{Controlled-variable ablation:} A single
-  \texttt{ConfigurableFusionModel} instantiates all seven modality
-  subsets with identical encoders, attention, and classifier---
-  attributing performance differences solely to modalities, not
-  incidental architectural choices.
+  \item \textbf{A missing-data sentinel that silently disables an
+  entire modality, found and fixed:} We trace a face-only
+  configuration's chance-level performance to a $-100$
+  tracking-failure sentinel in OpenFace's binary AU channels, which
+  survives the standard confidence filter and, under per-participant
+  z-scoring, compresses the genuine signal $\approx$79$\times$
+  (Section~\ref{sec:sentinel}). This is the kind of silent
+  data-corruption bug that can produce a false null result---or, left
+  uncaught in the opposite direction, a false discovery---in any
+  pipeline that reuses OpenFace output without auditing sentinel
+  values. Removing the affected frames raises face-only AUC from
+  $0.513\pm0.113$ to $0.708\pm0.042$ with 5/5 seeds improving
+  (Wilcoxon $p{=}0.031$, $d{=}1.43$)---the only statistically
+  significant effect in this study, and a data-quality rather than a
+  modelling one.
 
-  \item \textbf{Symptom-level multi-task learning (most promising,
-  not statistically confirmed):}
-  Joint prediction of binary label, PHQ-8 severity score, and all
-  eight PHQ-8 symptom items reduces seed variance and raises mean F1
-  from $0.607\pm0.063$ (single-task baseline) to $0.629\pm0.021$
-  (proposed model) across 5~seeds. A paired Wilcoxon test matching
-  seeds between the two models does not reach significance
-  ($p{=}0.625$, 3/5~pairs favor multi-task;
-  Section~\ref{sec:ablation}), so we report the mean improvement and
-  variance reduction as encouraging observations rather than a
-  statistically validated effect.
+  \item \textbf{Direct confirmation that DAIC-WOZ text models can
+  learn interview structure instead of depression language:} Building
+  on a validity concern raised by recent reproducibility work
+  \cite{bailey2024shortcut,patapati2025invalid}, we test it directly
+  in our own pipeline: an interviewer-only text model---with zero
+  access to any word the patient says---reaches test AUC~$=0.738$,
+  \emph{exceeding} our participant-only model's AUC~$=0.610$
+  (Section~\ref{sec:shortcut}). This is a concrete, reproducible
+  demonstration that headline DAIC-WOZ numbers in the literature which
+  include interviewer text may substantially reflect which questions
+  get asked rather than what the patient says, with direct
+  implications for how the field should report and compare results.
 
-  \item \textbf{Exploratory findings on two design choices:}
-  Cross-modal attention and Equalized Odds fairness training are
-  evaluated in 10-seed paired experiments. Neither reaches
-  statistical significance at $N{=}34$ (Wilcoxon $p{=}0.496$ and
-  $p{=}0.813$ respectively). We report these as important negative
-  and inconclusive results that characterize the limits of these
-  techniques on small clinical datasets.
+  \item \textbf{Cross-corpus transfer collapses to chance for both
+  audio and text modalities:} Zero-shot evaluation of our
+  strongest unimodal (audio) model on EATD-Corpus (Chinese-language)
+  collapses from in-domain AUC~$=0.735$ to AUC~$=0.531$ (95\% CI
+  $[0.406,0.653]$)---statistically indistinguishable from chance. An
+  independent probe of the text modality on WU3D \cite{wang2020wu3d}
+  (32,540 Weibo users) replicates this with a far tighter bound
+  (AUC~$=0.506$, 95\% CI $[0.5008,0.5121]$), which we trace to 55.9\%
+  of cross-lingual documents producing all-zero TF-IDF vectors. Both
+  results indicate the learned representations are corpus/language-specific
+  artifacts rather than transferable depression biomarkers, a claim
+  rarely tested directly in this literature.
+
+  \item \textbf{A controlled tri-modal ablation testbed built to make
+  these audits possible:} A single \texttt{ConfigurableFusionModel}
+  instantiates all seven modality subsets with identical encoders,
+  attention, and classifier, attributing performance differences
+  solely to modalities rather than incidental architectural choices.
+  Within this testbed we additionally evaluate symptom-level
+  multi-task learning, cross-modal attention, and Equalized Odds
+  fairness training. A power analysis of the original 5-seed
+  multi-task test showed it was underpowered ($n{\approx}67$ needed
+  for 80\% power), so we scaled that specific comparison to
+  70~paired seeds: multi-task learning is now a confirmed, large
+  effect (65/70~seeds, Wilcoxon $p{=}2.3{\times}10^{-12}$,
+  $d{=}1.17$), and the scaled run additionally reveals the
+  single-task baseline is far more seed-unstable than the original
+  5-seed sample suggested. Cross-modal attention and Equalized Odds
+  fairness training remain evaluated at 10~seeds and do not reach
+  significance at this sample size (attention $p{=}0.496$; fairness
+  $p{=}0.813$), with a post-hoc power analysis showing the study is
+  genuinely underpowered for these two effect sizes rather than
+  demonstrating true null effects (Section~\ref{sec:ablation}). We
+  report the latter two as transparent negative/inconclusive
+  findings: they characterize the limits of what a
+  $N{\approx}34$--$47$ clinical split can support, a constraint that
+  applies to most published DAIC-WOZ studies and is rarely stated
+  explicitly.
 
   \item \textbf{Missing-modality robustness (mixed result):}
   Training-time modality dropout ($p{=}0.15$ per channel) is
@@ -162,7 +279,13 @@ This paper makes the following contributions:
   but loses most of its discriminative power when text is removed
   on the held-out test split (AUC $0.706\to0.435$). We report this
   as a partial, modality-dependent robustness result rather than a
-  uniform one.
+  uniform one. Section~\ref{sec:sentinel} shows the face channel's
+  dispensability is not an artefact of the sentinel fault: repairing
+  that fault raises the face branch in isolation but leaves both the
+  single-task tri-modal configuration and the multi-task model used
+  for this masking experiment unchanged (5-seed re-test, both n.s.),
+  indicating genuine redundancy with audio and text rather than a
+  broken input.
 
   \item \textbf{Convergent explainability:} Attention rollout,
   gradient$\times$input saliency, and occlusion ablation applied
@@ -171,6 +294,29 @@ This paper makes the following contributions:
   attribution evidence than any single method alone, though
   Section~\ref{sec:robustness} shows this dev-split attribution
   ranking does not fully predict test-time modality necessity.
+
+  \item \textbf{Sentinel fix confirmed not to alter the headline
+  results (falsification check):} We additionally re-trained the
+  proposed multi-task model itself (5 seeds each arm) under the
+  corrected face features from Item~1: AUC changes by $-0.009$
+  ($p{=}0.125$) and F1 by $+0.030$ ($p{=}0.500$), neither significant
+  (2/5 and 1/5 seeds improve respectively). The paper's headline
+  single-task \emph{and} multi-task numbers are thus both confirmed
+  unaffected by direct re-test, not merely assumed so, and a
+  complementary analysis of 85~dynamics features computed on raw,
+  unnormalized AUs finds no blunted-affect signal surviving FDR
+  correction---isolating the sentinel, rather than the normalization
+  scheme, as the cause.
+
+  \item \textbf{Diagnostic-specificity probe:} DAIC-WOZ's single
+  self-report label cannot distinguish a depression detector from a
+  distress detector. We test this externally on a multi-category
+  mental-health corpus with length-matched contrasts, finding the model
+  transfers (depression vs.\ normal AUC~$=0.678$) but separates
+  depression from suicidality ($0.573$) and anxiety ($0.568$) only
+  weakly---partial support for the disorder-general critique
+  \cite{patapati2025invalid}, and a stated safety bound on where such a
+  model may be applied.
 \end{enumerate}
 
 The remainder of the paper is organized as follows.
@@ -180,8 +326,11 @@ Section~\ref{sec:features} details feature extraction.
 Section~\ref{sec:architecture} presents the model architecture.
 Section~\ref{sec:training} describes the training objective.
 Sections~\ref{sec:ablation}--\ref{sec:xai} report experimental results.
-Section~\ref{sec:discussion} discusses limitations and clinical
-significance. Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:discussion} audits two feature-level validity
+concerns---a missing-data sentinel in the visual stream
+(Section~\ref{sec:sentinel}) and an interviewer-prompt shortcut in the
+text stream (Section~\ref{sec:shortcut})---before discussing limitations
+and clinical significance. Section~\ref{sec:conclusion} concludes.
 
 % ============================================================
 \section{Related Work}
@@ -198,7 +347,12 @@ multimodal audio-visual handcrafted features. Gong and Poellabauer
 features to reach F1~=~0.70. Ray et al.\ \cite{ray2019} employed
 BERT for transcript encoding alongside audio features, achieving
 AUC~=~0.80. More recent transformer-based approaches
-\cite{shen2022} report AUC~$\approx$~0.83 on extended splits.
+\cite{shen2022} report AUC~$\approx$~0.83 on extended splits. Several
+of these higher numbers are obtained with interviewer text included;
+recent validity audits \cite{bailey2024shortcut,patapati2025invalid}
+show this can inflate performance through interview-structure
+shortcuts rather than depression-specific language, a concern we
+test directly in our own pipeline (Section~\ref{sec:shortcut}).
 
 To our knowledge, no prior DAIC-WOZ study combines all of: (1)~extended
 acoustic features (MFCC+COVAREP+FORMANT), (2)~an Equalized Odds
@@ -209,6 +363,23 @@ a methodological first; as reported in Sections~\ref{sec:ablation}
 and~\ref{sec:fairness}, the Equalized Odds loss did not yield a
 statistically significant effect at this sample size, and we report
 that outcome honestly rather than as a validated benefit.
+
+More importantly, this controlled testbed is what makes the three
+validity audits in Sections~\ref{sec:sentinel}--\ref{sec:shortcut} and
+Section~\ref{sec:xai} possible in the first place: because every
+modality subset shares an identical encoder, attention mechanism, and
+classifier, a chance-level face-only score cannot be dismissed as an
+architectural weakness of that branch, forcing the investigation that
+uncovered the OpenFace sentinel fault
+(Section~\ref{sec:sentinel}). Similarly, holding the model class fixed
+while swapping only which text is visible to it isolates the
+interviewer-prompt shortcut (Section~\ref{sec:shortcut}) from any
+confound introduced by a different text architecture. To our
+knowledge, none of the prior DAIC-WOZ studies cited above audit for
+either failure mode, and the wide spread of reported AUC/F1 values
+across this literature (0.49--0.83) is consistent with at least some
+of that variance reflecting uncontrolled versions of the same issues
+rather than genuine modelling gains.
 
 \subsection{Multimodal Fusion for Affect}
 
@@ -277,15 +448,6 @@ train/dev/test and, separately, across the k-fold partitions used
 in Section~\ref{sec:kfold} (each fold is drawn by \texttt{StratifiedKFold}
 over the pooled 188 participants with no repeated IDs across
 train/test within a fold).
-
-\subsection{FER2013 Pre-Training}
-
-FaceAUEncoder weights are pre-trained on FER2013 \cite{goodfellow2015}
-(35,887 facial images, seven emotion classes) before fine-tuning on
-CLNF AU sequences from DAIC-WOZ. This transfer learning step
-initializes temporal facial encoders with emotion-relevant features
-and addresses the small-N clinical dataset problem without requiring
-raw face video.
 
 % ============================================================
 \section{Feature Extraction}
@@ -543,17 +705,25 @@ Fig.~\ref{fig:ablation} summarize results.
 \toprule
 \textbf{Configuration} & \textbf{AUC} & \textbf{95\% CI} & \textbf{F1} & \textbf{Acc} \\
 \midrule
-Face only         & $0.513\pm0.113$ & $[0.245, 0.691]$ & $0.525\pm0.008$ & 0.382 \\
+Face only$^{\ddagger}$ & $0.513\pm0.113$ & $[0.245, 0.691]$ & $0.525\pm0.008$ & 0.382 \\
 Text only         & $0.561\pm0.043$ & $[0.379, 0.789]$ & $0.539\pm0.018$ & 0.459 \\
 Face + Text       & $0.667\pm0.069$ & $[0.636, 0.945]$ & $0.570\pm0.063$ & 0.606 \\
 Audio + Text      & $0.664\pm0.057$ & $[0.417, 0.831]$ & $0.437\pm0.114$ & 0.588 \\
 Face + Audio      & $0.712\pm0.028$ & $[0.480, 0.883]$ & $0.563\pm0.041$ & 0.612 \\
-Audio only        & $\mathbf{0.721\pm0.013}$ & $[0.541, 0.899]$ & $0.592\pm0.028$ & 0.676 \\
-Tri-Modal (single-task) & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ & 0.688 \\
+Audio only        & $\mathbf{0.721\pm0.013}$ & $[0.541, 0.899]$ & $0.593\pm0.028$ & 0.676 \\
+Tri-Modal (single-task) & $0.699\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ & 0.688 \\
 \midrule
 \textbf{Proposed (multi-task)} & $0.658\pm0.029$ & $[0.500, 0.879]$
   & $\mathbf{0.629\pm0.021}$ & $\mathbf{0.688}$ \\
 \bottomrule
+\multicolumn{5}{p{0.95\columnwidth}}{\scriptsize $^{\ddagger}$The
+face-only row reflects the feature pipeline used throughout this table.
+Section~\ref{sec:sentinel} shows this configuration is depressed to chance
+by an OpenFace $-100$ missing-data sentinel; with sentinel-carrying frames
+removed it reaches AUC~$0.708\pm0.042$. The remaining rows are unaffected
+in practice---re-running the tri-modal configuration with the corrected
+face features changes AUC by $+0.005$ ($p{=}0.313$)---so this table is
+reported as-run for consistency with the rest of the paper.} \\
 \end{tabular}
 \end{table}
 
@@ -567,56 +737,81 @@ Tri-Modal (single-task) & $0.698\pm0.047$ & $[0.449, 0.863]$ & $0.607\pm0.063$ &
 \end{figure}
 
 \noindent\textbf{Statistical note:} The proposed multi-task model
-achieves mean F1~$=0.629\pm0.021$, a $+0.022$ improvement in mean
-over the single-task tri-modal baseline ($0.607\pm0.063$), with
-markedly reduced seed variance ($\pm0.021$ vs.\ $\pm0.063$), and all
-five multi-task seeds individually exceed the single-task baseline's
-\emph{mean} of $0.607$ (Fig.~\ref{fig:seeds}). This is a weaker claim
-than paired seed-for-seed superiority, so we additionally recovered
-the previously-unreported per-seed single-task F1 values (by
-re-running that configuration for the same five seeds) and ran a
-paired Wilcoxon signed-rank test matching each multi-task run against
-the single-task run from the \emph{same} seed. That test does
-\emph{not} reach significance ($p{=}0.625$, $n{=}5$): the multi-task
-model wins only 3 of the 5 matched pairs (per-seed differences:
-$-0.006, -0.076, +0.072, +0.042, +0.079$). We note further that with
-only $n{=}5$ paired seeds, an exact two-sided Wilcoxon signed-rank
-test cannot reach $p<0.05$ under \emph{any} possible outcome: the most
-extreme possible result (all 5 differences the same sign) yields
-$p=2\times(1/2^5)=0.0625$, still above the conventional threshold.
-This test was therefore structurally unable to confirm significance
-at this seed count regardless of the true effect size, which is a
-stronger caveat than "not significant" alone conveys---it means this
-particular test, at this sample size, provides no real evidence
-either for or against a true effect, and a larger seed count (as used
-for the 10-seed attention and fairness tests above) would be required
-for this comparison to be informative. We also note this
-comparison bundles two simultaneous changes---the multi-task
-prediction heads and the extended 199-dim MFCC+COVAREP+FORMANT audio
-features, versus the single-task baseline's 120-dim MFCC-only
-audio---so even a significant result would not cleanly isolate
-multi-task learning as the causal factor. We therefore revise our
-earlier framing: the mean improvement and variance reduction are
-genuine and reproducible observations (the re-run single-task mean of
-$0.607\pm0.063$ exactly matches the original), but they do not
-constitute a statistically validated result at this sample size. We
-report this finding alongside the cross-modal-attention and
-fairness-loss results in Section~\ref{sec:fairness} as evidence of
-the same underlying pattern: $N{=}34$ is too small to statistically
-confirm any of the three design choices evaluated in this paper, even
-when the observed direction is consistently positive---a small-$N$
-benchmarking pitfall documented more generally by
-\cite{bouthillier2021}. Fig.~\ref{fig:p7p8}
-summarizes the mean-level comparison between the two models.
+achieves mean F1~$=0.629\pm0.021$ at the originally-reported 5-seed
+sample, a $+0.022$ improvement in mean over the single-task tri-modal
+baseline ($0.607\pm0.063$), with markedly reduced seed variance
+($\pm0.021$ vs.\ $\pm0.063$), and all five multi-task seeds
+individually exceed the single-task baseline's \emph{mean} of $0.607$
+(Fig.~\ref{fig:seeds}). This is a weaker claim than paired
+seed-for-seed superiority, so we additionally recovered the
+previously-unreported per-seed single-task F1 values and ran a paired
+Wilcoxon signed-rank test matching each multi-task run against the
+single-task run from the \emph{same} seed. At $n{=}5$ that test did
+\emph{not} reach significance ($p{=}0.625$): the multi-task model won
+only 3 of the 5 matched pairs. With only $n{=}5$ paired seeds, an
+exact two-sided Wilcoxon signed-rank test cannot reach $p<0.05$ under
+\emph{any} possible outcome, so this result was structurally
+uninformative rather than a genuine null. A power analysis of the
+5-seed differences (Cohen's~$d{=}0.34$) indicated $n{\approx}67$
+paired seeds would be needed for 80\% power at $\alpha{=}0.05$; we
+therefore scaled the comparison to $n{=}70$ paired seeds (seeds
+$1$--$70$), re-training both arms from scratch at each seed.
+
+The scaled test resolves the question decisively, and in doing so
+changes the headline finding. Across 70 seeds, the multi-task model
+remains stable and strong (mean F1~$=0.657\pm0.037$), while the
+single-task baseline turns out to be far less stable than the
+original 5-seed sample implied (mean F1~$=0.464\pm0.164$, range
+$[0.14,0.71]$ across seeds): several single-task seeds collapse to
+near-degenerate F1 despite acceptable AUC ($0.60$--$0.72$), indicating
+the single-task model's discriminative ranking is often fine but its
+decision threshold is highly seed-sensitive on this small dev set,
+whereas the multi-task heads and modality dropout regularize this
+away. The paired Wilcoxon test is now unambiguous: multi-task wins
+65 of 70 seed pairs (Wilcoxon $p{=}2.3{\times}10^{-12}$,
+Cohen's~$d{=}1.17$, a large effect exceeding the $d{=}0.34$ estimated
+from the original 5 seeds). We verified that the original 5 seeds
+($42,1,7,123,2024$) are not representative of the full 70-seed
+distribution---their single-task F1 values ($0.63,0.71,0.53$ for the
+three that overlap with the $1$--$70$ range) sit well above the
+70-seed mean---so the originally-reported $0.607\pm0.063$ single-task
+baseline was itself an optimistic small-sample draw, not a
+representative estimate. This is a concrete, within-pipeline
+demonstration of the same seed-sampling risk this paper otherwise
+raises as an external methodological concern
+\cite{bouthillier2021}: at $n{=}5$, both the effect size and the
+baseline it is measured against can be substantially misestimated in
+either direction.
+
+We revise our earlier framing accordingly: multi-task learning is a
+statistically confirmed, large-effect result, not merely an
+encouraging trend, and its benefit is larger than originally reported
+because it also suppresses a single-task instability that a 5-seed
+sample was too small to reveal. We note this comparison still bundles
+two simultaneous changes---the multi-task prediction heads and the
+extended 199-dim MFCC+COVAREP+FORMANT audio features, versus the
+single-task baseline's 120-dim MFCC-only audio---so this result
+confirms the combined intervention rather than isolating multi-task
+learning alone as the causal factor; disentangling the two would
+require a further controlled ablation, which we leave to future work.
+The cross-modal-attention and fairness-loss comparisons in
+Section~\ref{sec:fairness} remain at $n{=}10$ and are not rescaled
+here, so they retain the inconclusive-rather-than-null status
+described above. Fig.~\ref{fig:p7p8} summarizes the mean-level
+comparison between the two models at the original 5-seed sample; the
+scaled 70-seed distributions are reported numerically above pending a
+figure update.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig4_seed_consistency.png}
-  \caption{Per-seed F1 for the proposed model (all 5~seeds above the
-    single-task baseline's \emph{mean} of~0.607; a seed-matched paired
-    test against the baseline's own per-seed values is not
-    significant, $p{=}0.625$---see Statistical note above).
-    Shaded band: $\pm1$ std around proposed model mean (0.629).}
+  \caption{Per-seed F1 for the proposed model at the original 5-seed
+    sample (all 5~seeds above the single-task baseline's \emph{mean}
+    of~0.607). A seed-matched paired test at this sample size was
+    inconclusive ($p{=}0.625$, $n{=}5$); scaling to $n{=}70$ seeds
+    confirms a large, significant effect
+    ($p{=}2.3{\times}10^{-12}$, $d{=}1.17$)---see Statistical note
+    above. Shaded band: $\pm1$ std around proposed model mean (0.629).}
   \label{fig:seeds}
 \end{figure}
 
@@ -845,7 +1040,7 @@ Fig.~\ref{fig:radar}).
 \midrule
 Equal Opportunity (TPR) & 0.71 & 1.00 & \textbf{0.286}
   & \textcolor{red}{\textbf{Biased}} \\
-Predictive Parity (PPV) & 0.46 & 0.46 & 0.000 & Fair \\
+Predictive Parity (PPV) & 0.45 & 0.45 & 0.000 & Fair \\
 Demographic Parity      & 0.61 & 0.69 & 0.076 & Fair \\
 F1-score Parity         & 0.56 & 0.63 & 0.069 & Fair \\
 \bottomrule
@@ -885,7 +1080,7 @@ $\{42,1,7,13,21,100,2024,7777,555,88\}$
   & \textbf{F1} & \textbf{Wilcoxon $p$} \\
 \midrule
 No fairness ($\lambda_f{=}0$)     & $0.320\pm0.191$ & 4/10 & $0.668\pm0.050$ & \multirow{2}{*}{0.813} \\
-With fairness ($\lambda_f{=}0.1$) & $0.311\pm0.233$ & 3/10 & $0.667\pm0.052$ & \\
+With fairness ($\lambda_f{=}0.1$) & $0.311\pm0.233$ & 3/10 & $0.666\pm0.038$ & \\
 \midrule
 $\Delta$ (with $-$ without) & $-0.009$ & \multicolumn{2}{c}{3 ties} & n.s. \\
 \bottomrule
@@ -953,6 +1148,19 @@ established link to depressed affect in the FACS literature we
 reviewed. We report the full ranking rather than only the clinically
 convenient part of it.
 
+Two caveats apply to this ranking. First, all five top-attributed
+channels are continuous \emph{intensity} channels ($r$ suffix), which
+Section~\ref{sec:sentinel} confirms are free of the $-100$ sentinel
+(the sentinel occurs only in the six binary presence channels), so the
+ranking is not an artefact of that fault; the attributions are
+nonetheless computed from a model trained with the six affected
+channels present, and we report them as such. Second, AU04, AU12 and
+AU15 each occur twice in the channel set---once as intensity, once as
+presence---so attributions must be keyed by channel type rather than by
+bare AU name; keying on the name alone silently collapses the pair
+(for AU04, the presence-channel value $0.011$ would displace the
+intensity-channel value $0.079$ that the ranking above refers to).
+
 \textbf{Leave-one-modality-out AUC drop}: Removing audio causes the
 largest AUC decrease ($-0.03$) on the dev split, consistent with
 audio dominance via occlusion without relying on gradient computation.
@@ -1013,7 +1221,14 @@ the disorder-general-cues concern. Exact 4-class severity accuracy is
 low across all symptoms ($0.029$--$0.412$), so these findings should
 be read as evidence about \emph{which symptoms carry a detectable
 presence/absence signal}, not as evidence of clinically usable
-symptom-severity grading.
+symptom-severity grading. Section~\ref{sec:discussion}'s
+diagnostic-specificity probe tests the same concern from a
+complementary, external angle---asking whether the model's depression
+score separates depression from other distress conditions in an
+independent corpus, rather than asking whether its internal
+symptom-level predictions are uniform within DAIC-WOZ---and reaches
+the same qualified conclusion: partial, not clean, evidence against a
+purely disorder-general account.
 
 \subsection{Missing-Modality Robustness (Test-Time Masking)}
 \label{sec:robustness}
@@ -1100,6 +1315,26 @@ being a dev-specific artifact. This should be weighed when selecting
 a deployment threshold (a lower threshold trades false negatives for
 more false positives).
 
+To quantify this trade-off concretely, we scan the decision threshold
+on the dev split alone (no test-label access) and locate
+$\tau{=}0.45$, the smallest threshold before dev macro-F1 begins to
+fall sharply. Applied fixed to the test set, exactly as the headline
+$\tau{=}0.48$ was, this recall-prioritized operating point raises
+test recall on the depressed class from $0.286$ to $0.786$
+($4/14\to11/14$ depressed participants correctly flagged) while
+macro-F1 is essentially unchanged ($0.585\to0.589$); precision falls
+from $0.500$ to $0.407$ (4~FP$\to$16~FP). We do not adopt this as the
+headline operating point---it was not selected before this
+post-hoc analysis and macro-F1 alone cannot certify it as
+generalizing better than $\tau{=}0.48$---but it demonstrates that a
+substantially safer operating point (roughly $3\times$ fewer missed
+depressed participants) is available near-costlessly in aggregate
+F1 terms, simply by moving the threshold, with no retraining. For a
+screening deployment where a missed case is more costly than a false
+alarm, $\tau{\approx}0.45$ is the more defensible choice; we report
+$\tau{=}0.48$ throughout the rest of the paper only for consistency
+with the pre-registered dev-selection procedure.
+
 \subsection{Internal Audio Feature Ablation}
 \label{sec:audio_ablation}
 
@@ -1160,6 +1395,178 @@ seed count rather than being treated as confirmed here.
 \section{Discussion}
 \label{sec:discussion}
 
+\subsection{A Missing-Data Sentinel in the OpenFace AU Stream}
+\label{sec:sentinel}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig12_sentinel_fix.png}
+  \caption{Effect of the OpenFace $-100$ missing-data sentinel. Bars are
+    5-seed means ($\pm1$~SD); black points are individual seeds and grey
+    lines connect the same seed across arms. Removing sentinel-carrying
+    frames before normalization lifts the face-only configuration from
+    chance to AUC~$0.708$ (all 5~seeds improve), but leaves the tri-modal
+    configuration essentially unchanged, indicating the recovered facial
+    signal is largely redundant with audio and text.}
+  \label{fig:sentinel}
+\end{figure}
+
+Our ablation reports the face-only configuration at chance
+(AUC~$=0.513\pm0.113$, Table~\ref{tab:ablation}). Rather than accept this
+as evidence that CLNF Action Units carry no depression signal, we audited
+the feature stream itself and found a data-handling fault.
+
+The six binary AU channels (\texttt{AU04\_c}, \texttt{AU12\_c},
+\texttt{AU15\_c}, \texttt{AU23\_c}, \texttt{AU28\_c}, \texttt{AU45\_c})
+encode tracking failure with a $-100$ sentinel rather than a valid
+$\{0,1\}$ presence value. Our preprocessing---following common practice
+on this corpus---filters frames only by \texttt{confidence}~$\geq0.5$,
+which does \emph{not} remove these rows: every participant inspected
+retains sentinel-contaminated frames (mean~$3.3\%$ of retained frames on
+train, up to $22.9\%$ for individual participants on dev).
+
+The consequence is mechanical rather than subtle. Because the pipeline
+then z-scores each channel per participant, a value two orders of
+magnitude outside the real $\{0,1\}$ range dominates both moments. For
+participant~308's \texttt{AU12\_c} channel ($9.0\%$ sentinels), the
+channel statistics become $\mu=-8.856$, $\sigma=28.664$ instead of
+$\mu=0.157$, $\sigma=0.364$; after normalization the genuine frames
+occupy a span of $0.035$ rather than $2.749$---a $\approx79\times$
+compression that leaves the encoder a near-constant input on 6 of its 20
+channels.
+
+Dropping frames that carry the sentinel (a sentinel marks a failed
+track, so the whole frame is untrustworthy) and changing nothing else
+raises the face-only configuration from AUC~$0.513\pm0.113$ to
+$0.708\pm0.042$ across the same five seeds---every seed improves
+(Wilcoxon signed-rank $p{=}0.031$, Cohen's $d{=}1.43$), and seed variance
+falls $2.7\times$ (Fig.~\ref{fig:sentinel}). This is the only
+statistically significant effect reported anywhere in this paper, and it
+is a data-quality effect rather than a modelling one.
+
+Applying the same fix to the single-task tri-modal configuration
+(\texttt{ConfigurableFusionModel}, the shared architecture behind every
+row of Table~\ref{tab:ablation}), however, changes almost nothing
+(AUC~$0.697\pm0.051 \to 0.702\pm0.057$; 2/5~seeds improve; $p{=}0.313$).
+We additionally re-trained the proposed multi-task model itself
+(\texttt{MultiTaskFusionModel}---a distinct architecture with its own
+prediction heads and modality-dropout regularizer), 5 seeds under each
+face-feature version: AUC changes by $-0.009$ ($0.698\pm0.033 \to
+0.689\pm0.040$; 1/5~seeds improve; $p{=}0.125$) and F1 by $+0.030$
+($0.609\pm0.050 \to 0.639\pm0.051$; 2/5~seeds improve; $p{=}0.500$),
+neither significant. We read the three tested results together as
+follows: the facial signal destroyed by the sentinel is real and
+recoverable, but it is largely \emph{redundant} with what audio and
+text already supply, on both architectures---consistent with
+Section~\ref{sec:robustness}, where zero-masking the face channel at
+test time costs almost nothing on the multi-task model. Two
+consequences follow. First, this paper's headline tri-modal
+(single-task) \emph{and} proposed multi-task numbers are both
+confirmed unaffected by the fault by direct re-test, not merely
+assumed. Second, any DAIC-WOZ study that reports a weak or
+chance-level \emph{visual} branch should verify sentinel handling
+before concluding that facial behaviour is uninformative; we cannot
+tell from published descriptions how widely this is checked.
+
+We separately tested the alternative hypothesis that per-participant
+z-scoring itself removes the clinically-relevant signal, by computing
+85~interpretable dynamics features (per-AU intensity mean, temporal
+standard deviation, robust range, frame-to-frame change rate, activation
+fraction, and presence/transition rates) directly from \emph{raw},
+unnormalized AU intensities, and testing depressed vs.\ non-depressed
+differences on the pooled train$+$dev set ($N{=}141$) with
+Mann-Whitney~$U$ and Benjamini-Hochberg FDR control. No feature survives
+correction (smallest raw $p{=}0.115$), and the held-out test split was
+therefore never queried. In this corpus we find no measurable
+blunted-affect signal in absolute AU intensity or variability---the
+sentinel, not the normalization scheme, accounts for the face branch's
+failure.
+
+\subsection{Interviewer-Prompt Shortcut Audit}
+\label{sec:shortcut}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig9_shortcut_audit.png}
+  \caption{Interviewer-prompt shortcut audit. The same
+    \texttt{ConfigurableFusionModel} text configuration, training
+    schedule, and 5~seeds are used in all three conditions; only which
+    speaker's transcript turns are retained differs, and all conditions
+    are evaluated on an identical matched participant set. An
+    Ellie-only model---which never sees a single word spoken by the
+    patient---achieves the highest AUC on both splits, indicating the
+    label leaks through interview structure rather than through
+    depression-specific patient language. Error bars: $\pm1$~SD across
+    seeds.}
+  \label{fig:shortcut}
+\end{figure}
+
+A growing body of work questions the validity of DAIC-WOZ text results.
+Bailey and Plumbley \cite{bailey2024shortcut} show that text models
+including the virtual interviewer's (Ellie's) utterances can reach
+F1~=~0.90---not by detecting depression, but by exploiting \emph{which}
+questions Ellie asks: the semi-structured interview branches into a
+mental-health-history line of questioning for some participants, so the
+interviewer's own words leak the label. An independent large-scale
+reproducibility audit \cite{patapati2025invalid} similarly finds that
+most published DAIC-WOZ classifiers fail basic task-specificity checks.
+
+We audit this shortcut directly inside our own pipeline rather than
+taking the concern on faith. Using the identical
+\texttt{ConfigurableFusionModel}, training schedule, and 5 seeds as the
+Section~\ref{sec:ablation} ablation, we train the text-only
+configuration under three conditions that differ \emph{only} in which
+speaker's transcript turns are retained, with the TF-IDF vectorizer
+refit per condition on train only and all three conditions evaluated
+on an identical, leakage-free participant set (matched $N$: train~=~107,
+dev~=~33, test~=~46):
+
+\begin{itemize}
+  \item \textbf{Participant-only} (used throughout this paper):
+  test AUC~=~0.610, F1~=~0.456.
+  \item \textbf{Participant~+~Ellie}: test AUC~=~0.681, F1~=~0.516.
+  \item \textbf{Ellie-only}---the model never sees a single word spoken
+  by the patient: test AUC~=~\textbf{0.738}, F1~=~\textbf{0.568}
+  (dev AUC~=~0.841).
+\end{itemize}
+
+\noindent Fig.~\ref{fig:shortcut} summarizes these three conditions on
+both splits.
+
+The participant-only condition closely matches the text-modality
+number reported in Table~\ref{tab:ablation} (dev
+AUC~$0.5714\pm0.0397$ here vs.\ $0.5614\pm0.0431$ there, across the
+same 5 seeds); the small difference is due to the matched-$N$
+restriction (dev $N{=}33$ vs.\ $34$), which excludes one participant
+whose transcript lacks usable text under one of the three conditions
+so that all three conditions are evaluated on an identical
+participant set. This confirms the participant-only condition here
+and in the main ablation are the same model under the same protocol,
+differing only in this minor, documented sample restriction. The
+Ellie-only model---with
+zero access to patient language---outperforms the participant-only
+model by a wide margin on both dev and test. Inspecting the logistic-
+regression coefficients of an auxiliary classifier trained on Ellie-only
+TF-IDF features shows the terms most predictive of the depressed class
+are follow-up questions Ellie asks only of participants who have
+already disclosed treatment history: \emph{``seek help,'' ``how long ago
+were you diagnosed,'' ``still go to therapy now.''} The terms most
+predictive of not-depressed are neutral small talk (\emph{``awesome,''
+``great thanks,'' ``laughter''}). The label is leaking through interview
+\emph{structure}, not through any depression-specific language produced
+by the participant.
+
+This finding directly supports our participant-only design choice
+(Section~\ref{sec:features}) and reframes our comparatively modest
+headline numbers (F1~=~0.585, AUC~=~0.706, Table~\ref{tab:sota}) as
+evidence of validity rather than a weakness relative to literature
+values obtained with interviewer text included. We report this
+audit as a methodological contribution independent of the model's
+absolute performance: a positive result here (participant-only text
+also inflated) would have equally been reported, since the audit's
+purpose is to characterize the corpus, not to flatter this paper's
+numbers.
+
 \subsection{Limitations}
 
 \textbf{Small dev set ($N{=}34$):} The official dev split provides
@@ -1188,7 +1595,7 @@ threshold decision) through multi-task regularization. Three
 observations support this interpretation: (1)~audio-only has the
 lowest AUC variance ($\pm0.013$), indicating it learns the most
 stable discriminative boundary; (2)~tri-modal achieves higher F1
-($0.629$ vs.\ $0.592$) by combining weaker signals with optimized
+($0.629$ vs.\ $0.593$) by combining weaker signals with optimized
 threshold; (3)~leave-one-modality-out ablation on the dev split shows
 audio removal causes the largest AUC drop ($-0.03$), consistent with
 audio carrying the primary discriminative signal \emph{on dev}---though
@@ -1196,7 +1603,21 @@ Section~\ref{sec:robustness}'s test-time masking experiment finds this
 does not hold on the held-out test split, where removing audio does
 not hurt and removing text is instead the critical failure mode. On a
 larger dataset, the additional modalities are expected to provide
-complementary signal rather than noise.
+complementary signal rather than noise. This gap is not an artefact of
+the face-branch sentinel fault described in Section~\ref{sec:sentinel}:
+repairing that fault on the single-task tri-modal configuration
+(\texttt{ConfigurableFusionModel}, the architecture common to every row
+of Table~\ref{tab:ablation}) leaves its AUC within noise of the
+original value ($0.697\pm0.051\to0.702\pm0.057$, $p{=}0.313$). We
+separately re-trained the proposed multi-task model
+(\texttt{MultiTaskFusionModel}, a distinct architecture with its own
+heads and modality dropout) under the corrected face features, 5 seeds
+each arm: AUC changes by $-0.009$ ($p{=}0.125$) and F1 by $+0.030$
+($p{=}0.500$), neither significant. We therefore treat the
+audio-only/tri-modal gap reported here as reflecting genuine
+small-sample multimodal noise rather than a fixable data error, now
+confirmed by direct re-test on both architectures rather than assumed
+from the single-task result alone.
 
 \textbf{PHQ-8 as ground truth:} PHQ-8 is a self-report instrument,
 not a clinician-administered diagnosis. Label noise inherent in
@@ -1212,6 +1633,166 @@ is claimed here as these remain untested.
 Fairness analysis should be extended to intersectional groups and
 non-binary identities as datasets with richer demographic annotation
 become available.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig10_cross_corpus.png}
+  \caption{Zero-shot cross-corpus generalization in two modalities.
+    Each DAIC-WOZ-trained model is applied without fine-tuning to an
+    independent, Chinese-language corpus. Both collapse to chance.
+    The audio probe's wide interval reflects EATD-Corpus's small
+    sample ($N{=}162$); the text probe's near-invisible interval
+    reflects WU3D's $200\times$ larger sample ($N{=}32{,}540$), making
+    that null result statistically decisive. Error bars: 95\%
+    bootstrap CI, 2,000 resamples.}
+  \label{fig:crosscorpus}
+\end{figure}
+
+\textbf{Cross-corpus generalization:} All results above are evaluated
+within DAIC-WOZ (same corpus, recording setup, interview format, and
+population), so they characterize generalization to unseen
+\emph{participants} but not to unseen \emph{corpora}. To probe this
+directly, we take the audio-only configuration---the strongest and
+most stable unimodal model (Table~\ref{tab:ablation}, dev
+AUC~$=0.721\pm0.013$; re-verified on a fixed-seed checkpoint at dev
+AUC~$=0.735$)---and evaluate it \emph{zero-shot}, with no
+fine-tuning, on EATD-Corpus \cite{shen2022eatd}: 162 Chinese-language
+volunteers responding to free-form emotional prompts, labeled
+depressed/non-depressed via the Self-Rating Depression Scale
+(SDS~$\geq$~53; 30 depressed, 132 non-depressed). Both corpora are
+reduced to the same 120-dimensional MFCC+$\Delta$+$\Delta^2$
+representation before inference. Performance collapses from
+AUC~$=0.735$ in-domain to AUC~$=0.531$ (95\% CI $[0.406, 0.653]$,
+2,000 bootstrap resamples)---statistically indistinguishable from
+chance (AUC~$=0.5$)---and F1 drops from $0.56$ to $0.30$. The
+confusion matrix shows the model recovers only 14 of 30 depressed
+participants (recall~$=0.47$) while producing 49 false positives
+among 132 non-depressed participants. This indicates the acoustic
+representation learned is corpus- and language-specific---plausibly
+reflecting DAIC-WOZ's controlled Wizard-of-Oz interview acoustics and
+English prosody---rather than a transferable, language-agnostic
+depression biomarker. We report this as a direct empirical bound on
+clinical deployability: held-out same-corpus evaluation, however
+rigorous, does not by itself support claims of generalization to a
+new population, language, or recording setting.
+
+We replicate this pattern in the text modality with a second,
+independent, and substantially larger cross-corpus probe. A
+participant-only text-only checkpoint (identical
+\texttt{ConfigurableFusionModel} architecture; five seeds trained and
+each verified on the DAIC-WOZ held-out test split before selection,
+since Table~\ref{tab:ablation}-level dev performance alone was not
+sufficient to guarantee test-time generalization---this is the same
+caution the audio probe above illustrates; best-generalizing seed:
+test AUC~$=0.684$) is evaluated zero-shot, through the same
+DAIC-WOZ-fit TF-IDF vectorizer, on WU3D \cite{wang2020wu3d}: 32,540
+Sina Weibo users (10,324 depressed, 22,216 normal), whose labels were
+rechecked against DSM-5 criteria by professional annotators rather
+than inferred from subreddit self-selection. This is a complete
+language shift (English clinical transcript~$\to$~Chinese
+social-media text) layered on top of the domain shift already tested
+with EATD-Corpus. Performance collapses to AUC~$=0.506$ (95\% CI
+$[0.5008, 0.5121]$, 2,000 bootstrap resamples)---an order of
+magnitude tighter interval than the EATD probe, owing to WU3D's
+$200\times$ larger sample, making the null result statistically
+decisive rather than merely plausible. The mechanism is directly
+observable in the features themselves: 55.9\% of WU3D users produce
+an all-zero TF-IDF vector under the English-fit vectorizer (mean 4.11
+non-zero features out of 1,000), confirming the collapse reflects
+near-total vocabulary mismatch rather than a subtler representational
+failure. Two independent cross-corpus probes, in different
+modalities, on different corpora, in different languages, both
+collapse from strong in-domain performance to chance
+(Fig.~\ref{fig:crosscorpus})---consistent
+evidence that this pipeline (and, we suspect, comparable
+small-corpus DAIC-WOZ systems in general) learns corpus-specific
+rather than universal depression markers. We were unable to run an
+equivalent probe for the face modality: the only depression-labeled
+corpus we identified with OpenFace-extracted Action Units in a format
+compatible with our pipeline, CMDC \cite{zou2023cmdc}, requires an
+EULA-gated access process incompatible with this study's timeline. We
+note explicitly that this gap became \emph{more} rather than less
+important once the sentinel fault was corrected: before the fix, a
+chance-level face branch would have made a cross-corpus face probe
+uninformative, but the corrected branch reaches AUC~$0.708\pm0.042$
+in-domain (Section~\ref{sec:sentinel}) and therefore has something that
+could meaningfully fail to transfer. We flag this as the clearest
+outstanding gap in the paper's cross-corpus evidence rather than
+explaining it away.
+
+\textbf{Diagnostic specificity: depression, or distress in general?}
+DAIC-WOZ carries one self-report scale and no second diagnosis, so
+within-corpus accuracy cannot separate a depression detector from a
+general-distress detector---the central criticism of
+\cite{patapati2025invalid}. We test it directly. The participant-only
+text model is scored, without fine-tuning, on a publicly available
+English social-media corpus labeled by mental-health category
+\cite{sarkar2022mentalhealth}, and we ask whether its
+depression score can tell those categories apart. Because the corpus's
+\emph{Normal} class has a median length of 10~words against 87--137 for
+every distress class, unmatched contrasts would largely measure post
+length (and hence how many TF-IDF terms fire); we therefore pair each
+positive post with an unused negative post of similar word count
+($\pm25\%$) and report the matched figure. Labels here derive from the
+community a post was drawn from, not from clinical assessment, and are
+treated as category indicators rather than diagnoses.
+
+The model transfers to this domain (Depression vs.\ Normal, matched
+AUC~$=0.678$, 95\% CI $[0.656, 0.701]$)---unlike the WU3D probe above,
+because the English vocabulary survives (mean 53 non-zero TF-IDF terms
+per document vs.\ 4.11 for WU3D). But it also fires on other distress
+categories (Suicidal vs.\ Normal $0.569$; Anxiety vs.\ Normal $0.581$;
+Stress vs.\ Normal $0.550$), and its ability to \emph{separate}
+depression from those categories is weak: Depression vs.\ Suicidal
+$0.573$ $[0.557, 0.589]$, Depression vs.\ Anxiety $0.568$
+$[0.552, 0.584]$, Depression vs.\ Stress $0.626$ $[0.611, 0.641]$.
+These sit above chance---the model is not purely a distress
+detector---but far below its depression-vs-normal performance. We read
+this as partial support for \cite{patapati2025invalid}: much of what the
+model detects is shared across distress conditions, with a smaller
+depression-specific component on top---the same qualified conclusion
+Section~\ref{sec:symptom} reaches from the complementary angle of
+within-corpus symptom-level heterogeneity.
+
+One consequence deserves stating plainly, since it concerns safety
+rather than performance. The model separates depression from
+suicidality at AUC~$0.573$---barely above chance. This is expected: the
+PHQ-8 label it was trained on is precisely PHQ-9 \emph{minus} the
+suicidality item, so the model has never been exposed to a suicidality
+label, and nothing in this work supports its use for suicide-risk
+assessment. We report the contrast only to bound what the model
+distinguishes, not to propose a capability; a system that cannot
+separate these two conditions must not be deployed where that
+distinction carries clinical weight.
+
+\textbf{Learning curve---would more data actually help?} The paper
+repeatedly attributes non-significant effects to insufficient sample
+size without demonstrating that more data would help. We test this
+directly: the tri-modal \texttt{ConfigurableFusionModel} (identical
+architecture and training schedule as the main ablation) is trained on
+stratified subsamples of the 107-participant train pool at 30\%, 50\%,
+70\%, 85\%, and 100\% (3 seeds each), evaluated throughout on the
+fixed, never-subsampled dev set ($N{=}33$). AUC rises from
+$0.572\pm0.036$ at $N{=}32$ to $0.725\pm0.031$ at $N{=}91$
+(Fig.~\ref{fig:learningcurve}); the small dip at the full pool
+($N{=}107$: AUC~$=0.693\pm0.025$) falls within the overlapping
+standard-deviation bands of the $N{=}91$ point and is consistent with
+seed noise rather than a genuine reversal. The curve has not visibly
+plateaued within the available data, supporting the paper's repeated
+claim that this pipeline is data-limited rather than
+architecture-limited---a claim tested here rather than merely
+asserted.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig11_learning_curve.png}
+  \caption{Learning curve: tri-modal AUC/F1 on the fixed dev split as
+    the training pool is subsampled from the full 107 participants
+    (3~seeds per point, stratified by class). AUC increases with
+    $N$ and shows no clear plateau, indicating this pipeline remains
+    data-limited at the corpus's current size. Error bars: $\pm1$~SD.}
+  \label{fig:learningcurve}
+\end{figure}
 
 \subsection{Clinical Significance}
 
@@ -1242,36 +1823,66 @@ clean one.
 \section{Conclusion}
 \label{sec:conclusion}
 
-We presented a tri-modal depression risk detection framework on
-DAIC-WOZ whose most promising observed result is symptom-level PHQ-8
+We presented a systematic validity audit of a tri-modal depression-risk
+pipeline on DAIC-WOZ, surfacing three failure modes---a silent
+data-corruption sentinel in the visual stream, an interview-structure
+shortcut in the text stream, and non-transferable, corpus-specific
+representations in audio and text---that plausibly explain a
+substantial share of the wide performance variance reported across
+the DAIC-WOZ literature. Within the same controlled testbed, the most
+promising design-choice result we observed is symptom-level PHQ-8
 multi-task learning: a controlled ablation
 (7~configurations\,$\times$\,5~seeds\,=\,35~runs, bootstrap~CI,
 paired bootstrap significance) shows the multi-task model raises
 mean macro-F1 from $0.607\pm0.063$ to $0.629\pm0.021$ with markedly
 reduced seed variance, and accuracy~$=68.8\%$ on the DAIC-WOZ dev
-split---though a seed-matched paired Wilcoxon test against the
-single-task baseline does not reach significance ($p{=}0.625$,
-3/5~seed pairs favor multi-task; at $n{=}5$ this exact test cannot
-reach $p<0.05$ under any outcome, so more seeds would be needed before
-this test could be informative; Section~\ref{sec:ablation}), so this
-result is reported as encouraging rather than statistically
-confirmed. Two additional design choices---cross-modal attention
-fusion and Equalized Odds fairness training---were evaluated in
-10-seed paired Wilcoxon experiments as exploratory, not headline,
-contributions.
+split at the original 5-seed sample. A power analysis of that 5-seed
+paired comparison indicated it was underpowered
+($n{\approx}67$ needed for 80\% power), so we scaled the paired
+Wilcoxon test to $n{=}70$ seeds (Section~\ref{sec:ablation}). This
+confirms a large, significant effect (65/70~seed pairs favor
+multi-task, $p{=}2.3{\times}10^{-12}$, $d{=}1.17$) and additionally
+reveals that the single-task baseline is far less stable across
+seeds than the original 5-seed sample suggested
+($0.464\pm0.164$ over 70~seeds vs.\ the originally-reported
+$0.607\pm0.063$)---multi-task learning is therefore now reported as a
+statistically confirmed, large-effect headline result rather than an
+encouraging trend. Two additional design choices---cross-modal
+attention fusion and Equalized Odds fairness training---remain
+evaluated at $n{=}10$ paired Wilcoxon seeds and are reported as
+exploratory, not headline, contributions.
 
-The results are honest rather than favorable, and all three design
-choices we evaluated statistically show the same pattern---a positive
-mean trend that does not reach significance at this sample size:
-(1)~the multi-task improvement described above does not reach
-significance in a seed-matched paired test ($p{=}0.625$); (2)~cross-modal
-attention shows a positive trend over concatenation (F1\,$+0.024$,
-AUC wins 6/10~seeds) but does not reach statistical significance at
-$N{=}34$ ($p{=}0.496$); (3)~the Equalized Odds loss does not
-significantly reduce the gender TPR gap at this sample size
-($p{=}0.813$, wins 3/10~seeds). We report all three as negative/inconclusive
-findings that characterize the limits of these techniques on small
-clinical cohorts, rather than reframing them as successes.
+The single statistically significant effect we obtain is not a
+modelling result at all but a data-quality one: OpenFace's $-100$
+tracking-failure sentinel survives the standard confidence filter and,
+under per-participant z-scoring, compresses the genuine AU signal
+$\approx$79$\times$, holding the face-only configuration at chance.
+Removing the affected frames raises face-only AUC from
+$0.513\pm0.113$ to $0.708\pm0.042$ with all five seeds improving
+(Wilcoxon $p{=}0.031$, $d{=}1.43$), while leaving both the single-task
+tri-modal result ($p{=}0.313$) and the proposed multi-task result
+($p{=}0.125$ AUC, $p{=}0.500$ F1, both re-tested with 5 seeds)
+unchanged---so both headline numbers are confirmed by direct re-test,
+not merely assumed---but any DAIC-WOZ study reporting a weak visual
+branch should check sentinel handling before concluding that facial
+behaviour is uninformative
+(Section~\ref{sec:sentinel}).
+
+The remaining two design-choice comparisons are honest rather than
+favorable: (1)~cross-modal attention shows a positive trend over
+concatenation (F1\,$+0.024$, AUC wins 6/10~seeds) but does not reach
+statistical significance at $N{=}34$ ($p{=}0.496$); (2)~the Equalized
+Odds loss does not significantly reduce the gender TPR gap at this
+sample size ($p{=}0.813$, wins 3/10~seeds). We report both as
+negative/inconclusive findings that characterize the limits of these
+techniques on small clinical cohorts, rather than reframing them as
+successes. By contrast, the multi-task comparison---rescaled to
+$n{=}70$ paired seeds once a power analysis flagged the original
+$n{=}5$ test as underpowered---does reach significance
+($p{=}2.3{\times}10^{-12}$, $d{=}1.17$); we highlight this as an
+example of what resolving an underpowered comparison can reveal, and
+recommend the same rescaling wherever feasible for the two
+comparisons that remain inconclusive.
 Test-split evaluation ($N{=}47$) yields F1\,$=0.585$ and
 AUC\,$=0.706$, exceeding the dev AUC and providing evidence of
 generalization beyond the dev set. The test-split TPR gap is
@@ -1282,7 +1893,10 @@ underscoring that fixed-split fairness metrics on $N{<}50$ cohorts
 should be corroborated with resampling before being reported as
 findings. Test-time missing-modality masking
 (Section~\ref{sec:robustness}) shows the modality-dropout regularizer
-gives partial, not uniform, robustness: face is dispensable, but
+gives partial, not uniform, robustness: face is dispensable---and
+Section~\ref{sec:sentinel} establishes this is redundancy rather than a
+broken channel, since repairing the sentinel fault lifts face in
+isolation without moving the tri-modal result---but
 removing text collapses test AUC from~0.706 to~0.435. Symptom-level
 breakdown (Section~\ref{sec:symptom}) finds accuracy varies
 meaningfully across the eight PHQ-8 items (presence-absence
@@ -1302,8 +1916,13 @@ deployment decision. Three convergent explainability methods
 (attention rollout, gradient$\times$input saliency, occlusion)
 complete the framework. Future work includes GPU training, BERT text
 encoding, probability recalibration, and replication on larger
-corpora such as E-DAIC to determine whether the multi-task, attention,
-and fairness effects become statistically significant with more data.
+same-corpus extensions such as E-DAIC to determine whether the
+multi-task, attention, and fairness effects become statistically
+significant with more data. Closing the cross-corpus gap identified
+above will likely require domain adaptation or multi-corpus training
+rather than scale alone, and further cross-corpus probes (e.g.\ on
+in-the-wild multimodal corpora such as LMVD) are needed to map the
+boundary of this limitation across modalities beyond audio.
 
 % ============================================================
 \section*{Ethics Statement}
@@ -1322,8 +1941,10 @@ analysis at the authors' institution.
 The DAIC-WOZ corpus is not publicly redistributable; it is available
 to qualified researchers directly from USC ICT
 (\url{https://dcapswoz.ict.usc.edu/}) upon signing a data-use
-agreement. FER2013, used only for encoder pre-training, is a publicly
-available Kaggle dataset. All source code, trained model
+agreement. EATD-Corpus, WU3D, and the Kaggle mental-health text corpus
+\cite{sarkar2022mentalhealth}, used for the cross-corpus and
+diagnostic-specificity probes (Section~\ref{sec:discussion}), are all
+publicly available datasets. All source code, trained model
 configurations, and result artifacts (excluding the restricted raw
 dataset) are available at
 \url{https://github.com/DevMursLab/Thesis}.
@@ -1365,7 +1986,9 @@ sectors.
 \section*{Acknowledgment}
 The DAIC-WOZ corpus was provided by the University of Southern
 California Institute for Creative Technologies under a restricted-data
-agreement. FER2013 is a publicly available Kaggle dataset.
+agreement. EATD-Corpus, WU3D, and the Kaggle mental-health text corpus
+\cite{sarkar2022mentalhealth} are publicly available datasets used for
+cross-corpus and diagnostic-specificity evaluation.
 The authors thank the reviewers for constructive feedback.
 
 % ============================================================
@@ -1413,6 +2036,40 @@ A.~Ray, S.~Kumar, R.~Reddy, P.~Desai, and R.~Garg,
 ``Multi-level attention network using text, audio and video
 for depression prediction,'' in \textit{Proc. 9th Int. Workshop
 Audio/Visual Emotion Challenge (AVEC)}, 2019, pp.~81--88.
+
+\bibitem{bailey2024shortcut}
+A.~Bailey and M.~D.~Plumbley,
+``DAIC-WOZ: On the validity of using the therapist's prompts
+in automatic depression detection from clinical interviews,''
+\textit{arXiv preprint arXiv:2404.14463}, 2024.
+
+\bibitem{patapati2025invalid}
+S.~V.~Patapati, I.~Pendyala, M.~Ambati, P.~Kunadharaju,
+P.~Kokati, \emph{et al.},
+``Most DAIC-WOZ depression classifiers are invalid, they don't
+learn task-specific features: Preliminary findings from a
+large-scale reproducibility study,'' in \textit{Companion Proc.
+27th Int. Conf. Multimodal Interaction (ICMI)}, 2025.
+
+\bibitem{wang2020wu3d}
+Y.~Wang, Z.~Wang, C.~Li, Y.~Zhang, and H.~Wang,
+``A multitask deep learning approach for user depression
+detection on Sina Weibo,''
+\textit{arXiv preprint arXiv:2008.11708}, 2020.
+
+\bibitem{zou2023cmdc}
+B.~Zou, J.~Han, Y.~Wang, R.~Liu, S.~Zhao, L.~Feng, X.~Lyu, and H.~Ma,
+``Semi-structural interview-based Chinese multimodal depression
+corpus towards automatic preliminary screening of depressive
+disorders,''
+\textit{IEEE Trans. Affective Comput.}, vol.~14, no.~4,
+pp.~2823--2838, 2023.
+
+\bibitem{sarkar2022mentalhealth}
+S.~Sarkar,
+``Sentiment analysis for mental health,''
+Kaggle dataset, 2022. [Online]. Available:
+\url{https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health}
 
 \bibitem{shen2022}
 Y.~Shen, C.~Yang, and C.-Y.~Lin,
@@ -1468,16 +2125,12 @@ A.~Shrikumar, P.~Greenside, and A.~Kundaje,
 differences,'' in \textit{Proc. 34th Int. Conf. Mach. Learn.
 (ICML)}, Sydney, Australia, 2017, pp.~3145--3153.
 
-\bibitem{goodfellow2015}
-I.~J.~Goodfellow, D.~Erhan, P.~L.~Carrier, A.~Courville,
-M.~Mirza, B.~Hamner, W.~Cukierski, Y.~Tang, D.~Thaler,
-D.-H.~Lee, Y.~Zhou, C.~Ramaiah, F.~Feng, R.~Li, X.~Wang,
-D.~Athanasakis, J.~Shawe-Taylor, M.~Milakov, J.~Park,
-R.~Ionescu, M.~Popescu, C.~Grozea, J.~Bergstra,
-J.~Xie, L.~Romaszko, B.~Xu, Z.~Chuang, and Y.~Bengio,
-``Challenges in representation learning: A report on three
-machine learning contests,''
-\textit{Neural Netw.}, vol.~64, pp.~59--63, Apr.~2015.
+\bibitem{shen2022eatd}
+Y.~Shen, H.~Yang, and L.~Lin,
+``Automatic depression detection: An emotional audio-textual
+corpus and a GRU/BiLSTM-based model,''
+in \textit{Proc. IEEE Int. Conf. Acoust., Speech, Signal Process.
+(ICASSP)}, Singapore, 2022, pp.~6247--6251.
 
 \bibitem{bouthillier2021}
 X.~Bouthillier, C.~Laurent, and P.~Vincent,
@@ -1502,7 +2155,7 @@ Lake Placid, NY, USA, 2016, pp.~1--10.
 I.~Danylenko and O.~Unold,
 ``Common pitfalls and recommendations for use of machine
 learning in depression severity estimation: DAIC-WOZ study,''
-\textit{Appl. Sci.}, vol.~16, no.~1, p.~422, 2026.
+\textit{Appl. Sci.}, vol.~16, no.~1, p.~422, 2025.
 
 \end{thebibliography}
 

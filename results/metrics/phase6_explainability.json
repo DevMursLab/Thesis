@@ -22,51 +22,55 @@
     }
   },
   "au_saliency": {
-    "AU20": 0.1297,
-    "AU06": 0.1201,
-    "AU05": 0.1199,
-    "AU25": 0.0852,
-    "AU04": 0.0113,
-    "AU02": 0.0704,
-    "AU09": 0.0672,
-    "AU15": 0.0256,
-    "AU01": 0.047,
-    "AU10": 0.0377,
-    "AU14": 0.0343,
-    "AU12": 0.0127,
-    "AU17": 0.0223,
-    "AU28": 0.0219,
-    "AU23": 0.0175,
-    "AU45": 0.0145,
-    "AU26": 0.0092
+    "AU20 (intensity)": 0.1297,
+    "AU06 (intensity)": 0.1201,
+    "AU05 (intensity)": 0.1199,
+    "AU25 (intensity)": 0.0852,
+    "AU04 (intensity)": 0.0787,
+    "AU02 (intensity)": 0.0704,
+    "AU09 (intensity)": 0.0672,
+    "AU15 (intensity)": 0.0488,
+    "AU01 (intensity)": 0.047,
+    "AU10 (intensity)": 0.0377,
+    "AU14 (intensity)": 0.0343,
+    "AU12 (intensity)": 0.0261,
+    "AU15 (presence)": 0.0256,
+    "AU17 (intensity)": 0.0223,
+    "AU28 (presence)": 0.0219,
+    "AU23 (presence)": 0.0175,
+    "AU45 (presence)": 0.0145,
+    "AU12 (presence)": 0.0127,
+    "AU04 (presence)": 0.0113,
+    "AU26 (intensity)": 0.0092
   },
   "top_action_units": [
     {
-      "au": "AU20",
+      "au": "AU20 (intensity)",
       "clinical": "Lip Stretcher",
       "importance": 0.1297
     },
     {
-      "au": "AU06",
+      "au": "AU06 (intensity)",
       "clinical": "Cheek Raiser",
       "importance": 0.1201
     },
     {
-      "au": "AU05",
+      "au": "AU05 (intensity)",
       "clinical": "Upper Lid Raiser",
       "importance": 0.1199
     },
     {
-      "au": "AU25",
+      "au": "AU25 (intensity)",
       "clinical": "Lips Part",
       "importance": 0.0852
     },
     {
-      "au": "AU04",
+      "au": "AU04 (intensity)",
       "clinical": "Brow Lowerer*",
       "importance": 0.0787
     }
   ],
+  "note_channel_names": "AU04/AU12/AU15 appear as both an intensity (_r) and a presence (_c) channel in AU_COLS; keys retain the channel type so the two are not conflated. An earlier version keyed on the bare AU name, which let the _c value overwrite the _r value in au_saliency.",
   "ablation_auc_drop": {
     "without_face": 0.0076,
     "without_audio": 0.0303,

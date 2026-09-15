@@ -152,8 +152,14 @@ def ablation_importance(model, Xf, Xa, Xt, y, device):
 #  Figures
 # --------------------------------------------------------------------------- #
 def plot_au_saliency(attr, path):
-    names  = [c.replace("_r", "").replace("_c", "") for c in AU_COLS]
-    labels = [f"{n} — {AU_CLINICAL.get(n, n)}" for n in names]
+    # AU04/AU12/AU15 each occur as both an intensity (_r) and a presence
+    # (_c) channel; the channel type must stay in the label or matplotlib
+    # collapses the duplicate categories and 3 of the 20 bars are lost.
+    labels = []
+    for c in AU_COLS:
+        base = c.split("_")[0]
+        kind = "intensity" if c.endswith("_r") else "presence"
+        labels.append(f"{base} ({kind}) — {AU_CLINICAL.get(base, base)}")
     order  = np.argsort(attr)
     colors = ["#EF4444" if "*" in labels[i] else "#3B82F6" for i in order]
 
@@ -210,13 +216,22 @@ def main():
 
     # 2. AU saliency
     attr = au_saliency(model, Xf, Xa, Xt, device)
-    names = [c.replace("_r", "").replace("_c", "") for c in AU_COLS]
+    # NOTE: AU04, AU12 and AU15 each appear TWICE in AU_COLS -- once as a
+    # continuous intensity channel (_r) and once as a binary presence
+    # channel (_c). Stripping both suffixes collapses them onto the same
+    # key, so a dict keyed on the bare name silently drops one of the two
+    # (previously the _c value overwrote the _r value, reporting 0.0113
+    # for "AU04" in au_saliency while top_action_units correctly reported
+    # the _r value 0.0787). Keep the channel type in the key.
+    names = [c.replace("_r", " (intensity)").replace("_c", " (presence)")
+             for c in AU_COLS]
+    base_names = [c.split("_")[0] for c in AU_COLS]
     top = np.argsort(attr)[::-1][:5]
     print("\n" + "=" * 60)
     print("  2. TOP-5 FACIAL ACTION UNITS (gradient x input)")
     print("=" * 60)
     for i in top:
-        print(f"  {names[i]:6s} {AU_CLINICAL.get(names[i], ''):28s} {attr[i]:.4f}")
+        print(f"  {names[i]:22s} {AU_CLINICAL.get(base_names[i], ''):28s} {attr[i]:.4f}")
 
     # 3. ablation
     base, drops = ablation_importance(model, Xf, Xa, Xt, y, device)
@@ -244,9 +259,15 @@ def main():
         "au_saliency": {names[i]: round(float(attr[i]), 4)
                         for i in np.argsort(attr)[::-1]},
         "top_action_units": [
-            {"au": names[i], "clinical": AU_CLINICAL.get(names[i], ""),
+            {"au": names[i], "clinical": AU_CLINICAL.get(base_names[i], ""),
              "importance": round(float(attr[i]), 4)} for i in top
         ],
+        "note_channel_names": (
+            "AU04/AU12/AU15 appear as both an intensity (_r) and a presence "
+            "(_c) channel in AU_COLS; keys retain the channel type so the two "
+            "are not conflated. An earlier version keyed on the bare AU name, "
+            "which let the _c value overwrite the _r value in au_saliency."
+        ),
         "ablation_auc_drop": drops,
         "references": [
             "Shrikumar et al., Learning Important Features Through Propagating "
