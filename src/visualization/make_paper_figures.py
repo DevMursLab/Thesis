@@ -155,28 +155,43 @@ def fig_ablation_ci():
 
 # ============================================================
 def fig_p7_vs_p8():
-    """Fig 3 — Phase 7 vs Phase 8 F1 comparison."""
+    """Fig 3 — Original 5-seed headline F1 (top) vs the scaled 70-seed
+    significance-test means (bottom), shown side by side so the figure
+    itself documents why the comparison was rescaled."""
     p8 = load("phase8_validation.json")
+    scaled = load("multitask_significance_scaled.json")
     p7_tri = 0.607; p7_tri_std = 0.063
     p8_f1  = p8["f1_mean"]; p8_std = p8["f1_std"]
+    s70_single, s70_single_std = scaled["single_task_f1_mean"], scaled["single_task_f1_std"]
+    s70_multi,  s70_multi_std  = scaled["multi_task_f1_mean"],  scaled["multi_task_f1_std"]
 
-    fig, ax = plt.subplots(figsize=(5.5, 4))
-    x = ["Single-Task\nBaseline\n(MFCC)", "Proposed\nMulti-Task\n(+COVAREP)"]
-    y = [p7_tri, p8_f1]
-    e = [p7_tri_std, p8_std]
+    fig, axes = plt.subplots(1, 2, figsize=(8.5, 4), sharey=True)
     colors = [NAVY, CORAL]
+
+    ax = axes[0]
+    x = ["Single-Task\nBaseline\n(MFCC)", "Proposed\nMulti-Task\n(+COVAREP)"]
+    y, e = [p7_tri, p8_f1], [p7_tri_std, p8_std]
     bars = ax.bar(x, y, yerr=e, capsize=6, color=colors, alpha=0.85,
                   edgecolor="black", linewidth=0.9, width=0.55)
-    ax.set_ylabel("Macro-F1 (mean ± std, 5 seeds)")
-    ax.set_ylim(0.45, 0.72)
-    ax.set_title("Proposed Multi-Task Model vs. Single-Task Baseline")
     for b, v, s in zip(bars, y, e):
         ax.text(b.get_x() + b.get_width()/2, v + s + 0.005, f"{v:.3f}±{s:.3f}",
-                ha="center", fontsize=8.5, weight="bold")
-    ax.annotate("", xy=(1, p8_f1), xytext=(0, p7_tri),
-                arrowprops=dict(arrowstyle="->", color=TEAL, lw=1.5))
-    ax.text(0.5, 0.66, f"+{p8_f1-p7_tri:.3f}", color=TEAL,
-            ha="center", fontsize=10, weight="bold")
+                ha="center", fontsize=8, weight="bold")
+    ax.set_ylabel("Macro-F1 (mean ± std)")
+    ax.set_ylim(0.30, 0.75)
+    ax.set_title("Original 5-Seed Sample\n(underpowered, $p{=}0.625$)", fontsize=9.5)
+
+    ax = axes[1]
+    y2, e2 = [s70_single, s70_multi], [s70_single_std, s70_multi_std]
+    bars2 = ax.bar(x, y2, yerr=e2, capsize=6, color=colors, alpha=0.85,
+                   edgecolor="black", linewidth=0.9, width=0.55)
+    for b, v, s in zip(bars2, y2, e2):
+        ax.text(b.get_x() + b.get_width()/2, v + s + 0.005, f"{v:.3f}±{s:.3f}",
+                ha="center", fontsize=8, weight="bold")
+    ax.set_title(f"Scaled 70-Seed Test\n(confirmed, $p{{=}}${scaled['wilcoxon_p_value']:.1e})",
+                 fontsize=9.5)
+
+    fig.suptitle("Proposed Multi-Task Model vs. Single-Task Baseline", y=1.0)
+    plt.tight_layout()
     plt.savefig(FIGURES / "fig3_p7_vs_p8.png")
     plt.close()
     print("  fig3_p7_vs_p8.png")
@@ -184,28 +199,32 @@ def fig_p7_vs_p8():
 
 # ============================================================
 def fig_seed_consistency():
-    """Fig 4 — Per-seed F1 consistency strip plot."""
-    p8 = load("phase8_validation.json")
-    seeds = [s["seed"] for s in p8["per_seed"]]
-    f1s   = [s["f1"]   for s in p8["per_seed"]]
-    p7_tri = 0.607
+    """Fig 4 — Single-task vs multi-task F1 distribution over the scaled
+    70-seed significance test (replaces the original 5-seed strip plot,
+    which was too small a sample to show the single-task instability the
+    scaled test revealed)."""
+    scaled = load("multitask_significance_scaled.json")
+    single_f1 = np.array([s["single_f1"] for s in scaled["per_seed"]])
+    multi_f1  = np.array([s["multi_f1"]  for s in scaled["per_seed"]])
+    n = scaled["n_seeds"]
 
-    fig, ax = plt.subplots(figsize=(6, 3.6))
-    ax.scatter(range(len(seeds)), f1s, s=120, color=CORAL,
-               edgecolor="black", zorder=3, label="Proposed model per-seed F1")
-    ax.axhline(p8["f1_mean"], color=CORAL, ls="-", lw=1.5,
-               label=f"Proposed model mean ({p8['f1_mean']:.3f})")
-    ax.axhline(p7_tri, color=NAVY, ls="--", lw=1.5,
-               label=f"Single-task baseline mean ({p7_tri:.3f})")
-    ax.fill_between([-0.5, len(seeds)-0.5],
-                    p8["f1_mean"]-p8["f1_std"], p8["f1_mean"]+p8["f1_std"],
-                    color=CORAL, alpha=0.12)
-    ax.set_xticks(range(len(seeds)))
-    ax.set_xticklabels([f"seed {s}" for s in seeds])
+    fig, ax = plt.subplots(figsize=(6, 4))
+    bp = ax.boxplot([single_f1, multi_f1], widths=0.5, patch_artist=True,
+                     tick_labels=[f"Single-Task\nBaseline\n(mean {single_f1.mean():.3f})",
+                                  f"Proposed\nMulti-Task\n(mean {multi_f1.mean():.3f})"],
+                     showmeans=True)
+    for patch, color in zip(bp["boxes"], [NAVY, CORAL]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+    for i, f1s in enumerate([single_f1, multi_f1], start=1):
+        jitter = np.random.default_rng(0).uniform(-0.08, 0.08, size=len(f1s))
+        ax.scatter(np.full(len(f1s), i) + jitter, f1s, s=14, color="black",
+                   alpha=0.35, zorder=3)
     ax.set_ylabel("Macro-F1")
-    ax.set_xlim(-0.5, len(seeds)-0.5)
-    ax.set_title("Proposed Model Per-Seed Consistency (all 5 above baseline)")
-    ax.legend(fontsize=7.5, loc="lower right")
+    ax.set_title(f"Single- vs Multi-Task F1 Across {n} Paired Seeds\n"
+                 f"(Wilcoxon $p$={scaled['wilcoxon_p_value']:.1e}, "
+                 f"$d$={scaled['cohens_d']:.2f}, wins {scaled['wins_multitask']})")
+    plt.tight_layout()
     plt.savefig(FIGURES / "fig4_seed_consistency.png")
     plt.close()
     print("  fig4_seed_consistency.png")
