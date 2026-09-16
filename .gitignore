@@ -14,6 +14,7 @@ util.zip
 # Reference PDFs in documents/ (large binary files)
 documents/*.pdf
 documents/*.m
+documents/paper_submission_overleaf.zip
 
 # Reference PDFs (not source code)
 *.pdf
