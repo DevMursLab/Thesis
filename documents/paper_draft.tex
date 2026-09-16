@@ -1718,7 +1718,19 @@ each arm: AUC changes by $-0.009$ ($p{=}0.125$) and F1 by $+0.030$
 audio-only/tri-modal gap reported here as reflecting genuine
 small-sample multimodal noise rather than a fixable data error, now
 confirmed by direct re-test on both architectures rather than assumed
-from the single-task result alone.
+from the single-task result alone. We flag one remaining caveat for
+consistency with Section~\ref{sec:ablation}: the audio-only and
+single-task tri-modal AUC values compared here still come from the
+original 5-seed sample, and our own scaled 70-seed test
+(Section~\ref{sec:ablation}) showed that a 5-seed estimate for this
+same single-task tri-modal configuration's F1 was an optimistic
+outlier relative to its true 70-seed distribution ($0.607\pm0.063$
+vs.\ $0.464\pm0.164$). We have not re-run the audio-only/tri-modal AUC
+comparison at $n{=}70$, so we cannot rule out a similar shift here;
+we report the 5-seed AUC gap as observed rather than as confirmed at
+scale, and flag scaling it to a larger seed count as future work,
+consistent with how we treat this same open question elsewhere in the
+paper.
 
 \textbf{PHQ-8 as ground truth:} PHQ-8 is a self-report instrument,
 not a clinician-administered diagnosis. Label noise inherent in
