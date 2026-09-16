@@ -68,7 +68,7 @@ Equalized-Odds fairness loss); the most promising of these,
 \emph{multi-task learning}---jointly predicting the binary label,
 PHQ-8 score, and eight symptom items---raises mean macro-F1 from
 $0.607\pm0.063$ to $0.629\pm0.021$ on the official dev split
-($N{=}34$) at the originally-reported 5-seed sample. A post-hoc power
+($N{=}34$) in the originally-reported 5-seed sample. A post-hoc power
 analysis of that 5-seed paired test (Cohen's~$d{=}0.34$) showed
 $n{\approx}67$ paired seeds would be needed for 80\% power, so we
 scaled the paired Wilcoxon test to 70~seeds. This both confirms the
@@ -433,9 +433,9 @@ which questions get asked rather than what the patient says. \\[2pt]
 \textbf{3. Cross-corpus / cross-lingual transfer check} &
 Before describing a learned representation as a depression
 \emph{biomarker} rather than a corpus-fit artifact, evaluate it
-zero-shot on at least one independent corpus (Section~\ref{sec:features});
-in-corpus performance alone cannot distinguish the two
-(Section~\ref{sec:features}, cross-corpus probes). \\[2pt]
+zero-shot on at least one independent corpus
+(Section~\ref{subsec:limitations}, cross-corpus probes); in-corpus
+performance alone cannot distinguish the two. \\[2pt]
 \textbf{4. Participant-level split disjointness} &
 Verify programmatically---not by construction assumption---that no
 participant ID appears in more than one of train/dev/test or across
@@ -455,7 +455,7 @@ Because PHQ-8 alone cannot distinguish a depression-specific detector
 from a general-distress detector, evaluate the model against at least
 one other distress category (e.g.\ anxiety, suicidality) on an
 external corpus before describing detections as depression-specific
-(Section~\ref{sec:features}). \\
+(Section~\ref{subsec:limitations}, diagnostic-specificity probe). \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1668,6 +1668,7 @@ purpose is to characterize the corpus, not to flatter this paper's
 numbers.
 
 \subsection{Limitations}
+\label{subsec:limitations}
 
 \textbf{Small dev set ($N{=}34$):} The official dev split provides
 insufficient statistical power to establish a significant AUC
@@ -1936,7 +1937,7 @@ multi-task learning: a controlled ablation
 paired bootstrap significance) shows the multi-task model raises
 mean macro-F1 from $0.607\pm0.063$ to $0.629\pm0.021$ with markedly
 reduced seed variance, and accuracy~$=68.8\%$ on the DAIC-WOZ dev
-split at the original 5-seed sample. A power analysis of that 5-seed
+split in the original 5-seed sample. A power analysis of that 5-seed
 paired comparison indicated it was underpowered
 ($n{\approx}67$ needed for 80\% power), so we scaled the paired
 Wilcoxon test to $n{=}70$ seeds (Section~\ref{sec:ablation}). This
