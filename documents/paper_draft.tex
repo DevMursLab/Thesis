@@ -317,6 +317,14 @@ confounds. Concretely, we contribute:
   weakly---partial support for the disorder-general critique
   \cite{patapati2025invalid}, and a stated safety bound on where such a
   model may be applied.
+
+  \item \textbf{A reusable validity checklist:} We distill the failure
+  modes above into a six-item checklist (Table~\ref{tab:checklist},
+  Section~\ref{sec:checklist}) that other DAIC-WOZ studies can apply
+  directly---covering sentinel auditing, interviewer-text isolation,
+  cross-corpus transfer, split disjointness, seed-count power, and
+  diagnostic specificity---so that identifying these issues no longer
+  requires repeating our post-hoc discovery process.
 \end{enumerate}
 
 The remainder of the paper is organized as follows.
@@ -380,6 +388,82 @@ either failure mode, and the wide spread of reported AUC/F1 values
 across this literature (0.49--0.83) is consistent with at least some
 of that variance reflecting uncontrolled versions of the same issues
 rather than genuine modelling gains.
+
+\subsection{A Validity Checklist for DAIC-WOZ Studies}
+\label{sec:checklist}
+
+The three failure modes audited in this paper (Sections~\ref{sec:sentinel}--\ref{sec:shortcut}
+and~\ref{sec:xai}) are not idiosyncrasies of our own pipeline: each
+arises from a property of the DAIC-WOZ release itself (an
+undocumented OpenFace sentinel value, an interviewer transcript
+channel included by default, a single-corpus/single-language design)
+that any pipeline built on this corpus can inherit silently. Because
+none of the prior work surveyed above reports auditing for these
+specific failure modes (Table~\ref{tab:checklist}), we distill our
+audits into a checklist so that other DAIC-WOZ studies can check for
+each condition directly, at the cost of a few lines of code, rather
+than repeating our post-hoc discovery process. Each row names a
+concrete, mechanical check; passing it does not guarantee validity,
+but failing it identifies a specific, previously undocumented way a
+reported result on this corpus can be inflated or deflated.
+
+\begin{table}[t]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\caption{A Validity Checklist for DAIC-WOZ Depression-Detection Studies}
+\label{tab:checklist}
+\begin{tabular}{p{0.22\columnwidth}p{0.68\columnwidth}}
+\toprule
+\textbf{Check} & \textbf{What to verify} \\
+\midrule
+\textbf{1. OpenFace sentinel audit} &
+Before z-scoring or otherwise normalizing OpenFace AU channels, confirm
+no frame carries the $-100$ tracking-failure sentinel (or any
+out-of-range placeholder) past the standard confidence filter. A
+sentinel that survives normalization can silently compress genuine
+signal by an order of magnitude (Section~\ref{sec:sentinel}) and
+produce a false null result for the visual modality without any
+error or warning. \\[2pt]
+\textbf{2. Interviewer-text isolation} &
+Confirm the text pipeline uses \emph{participant-only} utterances, and
+if interviewer turns are included, separately report an
+interviewer-only ablation (Section~\ref{sec:shortcut}). A text model
+that scores well while including interviewer turns may be exploiting
+which questions get asked rather than what the patient says. \\[2pt]
+\textbf{3. Cross-corpus / cross-lingual transfer check} &
+Before describing a learned representation as a depression
+\emph{biomarker} rather than a corpus-fit artifact, evaluate it
+zero-shot on at least one independent corpus (Section~\ref{sec:features});
+in-corpus performance alone cannot distinguish the two
+(Section~\ref{sec:features}, cross-corpus probes). \\[2pt]
+\textbf{4. Participant-level split disjointness} &
+Verify programmatically---not by construction assumption---that no
+participant ID appears in more than one of train/dev/test or across
+resampling folds. Subject-level leakage is reported as the most
+common and most performance-inflating flaw across a 66-paper
+DAIC-WOZ reproducibility audit \cite{danylenko2026}. \\[2pt]
+\textbf{5. Seed-count power check} &
+Before reporting a paired seed-level significance test (e.g.\
+Wilcoxon) as confirmatory or as a null result, compute the seed count
+required for adequate power at the observed effect size. An
+underpowered test is uninformative in either direction
+(Section~\ref{sec:ablation}); we found this directly by discovering our own
+$n{=}5$ multi-task comparison could not reach significance under any
+outcome, then resolving it by scaling to $n{=}70$ seeds. \\[2pt]
+\textbf{6. Diagnostic-specificity check} &
+Because PHQ-8 alone cannot distinguish a depression-specific detector
+from a general-distress detector, evaluate the model against at least
+one other distress category (e.g.\ anxiety, suicidality) on an
+external corpus before describing detections as depression-specific
+(Section~\ref{sec:features}). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We are not aware of a prior published DAIC-WOZ study that reports
+having applied all six checks; applying even a subset before
+reporting a headline number would have flagged the specific failure
+modes this paper identifies.
 
 \subsection{Multimodal Fusion for Affect}
 
