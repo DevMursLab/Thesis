@@ -905,22 +905,29 @@ inconclusive comparisons were already reported as such.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig4_seed_consistency.png}
-  \caption{Per-seed F1 for the proposed model at the original 5-seed
-    sample (all 5~seeds above the single-task baseline's \emph{mean}
-    of~0.607). A seed-matched paired test at this sample size was
-    inconclusive ($p{=}0.625$, $n{=}5$); scaling to $n{=}70$ seeds
-    confirms a large, significant effect
-    ($p{=}2.3{\times}10^{-12}$, $d{=}1.17$)---see Statistical note
-    above. Shaded band: $\pm1$ std around proposed model mean (0.629).}
+  \caption{Single-task baseline vs.\ proposed multi-task model F1,
+    box plot with individual seeds overlaid, across the full scaled
+    test ($n{=}70$ paired seeds). The single-task baseline's wide
+    spread (range $[0.14,0.71]$, mean $0.464\pm0.164$) against the
+    multi-task model's tight cluster (mean $0.657\pm0.037$) is the
+    same instability the Statistical note describes numerically. At
+    the original $n{=}5$ sample this comparison was inconclusive
+    ($p{=}0.625$); the full $n{=}70$ test is decisive
+    ($p{=}2.3{\times}10^{-12}$, $d{=}1.17$, wins 65/70).}
   \label{fig:seeds}
 \end{figure}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig3_p7_vs_p8.png}
-  \caption{Single-task baseline vs.\ proposed multi-task model:
-    F1 comparison (5-seed mean\,$\pm$\,std). Multi-task learning
-    delivers a consistent $+0.022$ gain with lower variance.}
+  \caption{Single-task baseline vs.\ proposed multi-task model F1,
+    mean\,$\pm$\,std. \emph{Left:} the original 5-seed sample
+    ($0.607\pm0.063\to0.629\pm0.021$, underpowered paired test,
+    $p{=}0.625$). \emph{Right:} the scaled 70-seed test
+    ($0.464\pm0.164\to0.657\pm0.037$, confirmed,
+    $p{=}2.3{\times}10^{-12}$). The larger gap and larger single-task
+    std at $n{=}70$ reflect the single-task baseline instability the
+    original 5-seed sample did not capture.}
   \label{fig:p7p8}
 \end{figure}
 
@@ -1719,16 +1726,19 @@ audio-only/tri-modal gap reported here as reflecting genuine
 small-sample multimodal noise rather than a fixable data error, now
 confirmed by direct re-test on both architectures rather than assumed
 from the single-task result alone. We flag one remaining caveat for
-consistency with Section~\ref{sec:ablation}: the audio-only and
-single-task tri-modal AUC values compared here still come from the
-original 5-seed sample, and our own scaled 70-seed test
-(Section~\ref{sec:ablation}) showed that a 5-seed estimate for this
-same single-task tri-modal configuration's F1 was an optimistic
-outlier relative to its true 70-seed distribution ($0.607\pm0.063$
-vs.\ $0.464\pm0.164$). We have not re-run the audio-only/tri-modal AUC
-comparison at $n{=}70$, so we cannot rule out a similar shift here;
-we report the 5-seed AUC gap as observed rather than as confirmed at
-scale, and flag scaling it to a larger seed count as future work,
+consistency with Section~\ref{sec:ablation}: both AUC values compared
+in this paragraph (audio-only $0.721\pm0.013$ and the proposed
+multi-task model $0.658\pm0.029$) still come from the original 5-seed
+sample, not the scaled 70-seed test. That scaled test targeted F1 on
+the single-task-vs-multi-task comparison specifically and found the
+multi-task model's F1 stable across seeds ($0.657\pm0.037$ over
+$n{=}70$), which is reassuring for the multi-task side of the AUC
+comparison here; it did not, however, rescale the audio-only
+configuration or the AUC metric itself, so we cannot rule out that
+the audio-only AUC estimate shifts at a larger seed count the way the
+single-task \emph{F1} baseline did. We report the 5-seed AUC gap as
+observed rather than as confirmed at scale, and flag scaling the
+audio-only configuration to a larger seed count as future work,
 consistent with how we treat this same open question elsewhere in the
 paper.
 
@@ -2068,7 +2078,10 @@ and librosa~$\geq$0.10 (exact pinned versions in the repository's
 \texttt{requirements.txt}). The 5-seed ablation and multi-task
 experiments use seeds $\{42, 1, 7, 123, 2024\}$; the 10-seed fairness
 and attention-vs-concatenation experiments use seeds
-$\{42,1,7,13,21,100,2024,7777,555,88\}$. \texttt{torch.manual\_seed}
+$\{42,1,7,13,21,100,2024,7777,555,88\}$; the scaled multi-task
+significance test (Section~\ref{sec:ablation}) re-trains both the
+single-task and multi-task arms from scratch for seeds $1$--$70$
+inclusive. \texttt{torch.manual\_seed}
 and \texttt{numpy.random.seed} are set identically per run; exact
 bitwise reproducibility across GPU/CPU hardware is not guaranteed
 due to non-deterministic CUDA kernels, though result variation across
