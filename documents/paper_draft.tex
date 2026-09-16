@@ -881,10 +881,26 @@ require a further controlled ablation, which we leave to future work.
 The cross-modal-attention and fairness-loss comparisons in
 Section~\ref{sec:fairness} remain at $n{=}10$ and are not rescaled
 here, so they retain the inconclusive-rather-than-null status
-described above. Fig.~\ref{fig:p7p8} summarizes the mean-level
-comparison between the two models at the original 5-seed sample; the
-scaled 70-seed distributions are reported numerically above pending a
-figure update.
+described above. Fig.~\ref{fig:p7p8} summarizes both the original
+5-seed sample and the scaled 70-seed test side by side, and
+Fig.~\ref{fig:seeds} shows the full 70-seed paired distribution.
+
+\noindent\textbf{Multiple-comparisons correction:} The three design
+choices evaluated in this testbed---multi-task learning, cross-modal
+attention, and the Equalized Odds fairness loss---are naturally
+treated as one family of comparisons, since all three test whether a
+proposed architectural addition improves on a shared tri-modal
+baseline. Applying a Bonferroni correction across this family of
+three ($\alpha=0.05/3=0.0167$) does not change any conclusion: the
+scaled multi-task result remains significant by a wide margin
+($p{=}2.3{\times}10^{-12}\times3=6.9{\times}10^{-12}$, still far below
+$\alpha$), while the attention ($p{=}0.496$) and fairness ($p{=}0.813$)
+comparisons remain non-significant under either the corrected or
+uncorrected threshold. We report this correction for completeness
+rather than because it changes the substantive finding: at the
+sample sizes and effect sizes involved here, multi-task learning
+would survive a far stricter correction than Bonferroni, and the two
+inconclusive comparisons were already reported as such.
 
 \begin{figure}[t]
   \centering
