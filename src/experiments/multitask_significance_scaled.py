@@ -9,8 +9,17 @@ n=5 result reported in the original draft.
 
 Reuses the exact model/training logic from multitask_significance.py
 (single-task arm) and train_multitask.py (multi-task arm, refactored into
-a re-callable function) so the comparison stays apples-to-apples with what
-the paper already reports as "0.607 -> 0.629".
+a re-callable function).
+
+CORRECTED: the first run of this script (and the original
+multitask_significance.py/ablation_study.py headline numbers it was built
+to match) computed single-task F1 with sklearn's default `average='binary'`
+while the multi-task arm used `average='macro'` -- an apples-to-oranges
+comparison that was not caught until a post-hoc external review of the
+draft. Both arms now use `average='macro'` consistently. This changes the
+single-task F1 values (binary F1 for a single degenerate seed can be as
+low as ~0.14; macro F1, which averages in the majority-class F1, cannot
+go that low) and therefore also changes the paired significance test.
 
 Run:
     python -m src.experiments.multitask_significance_scaled
@@ -65,7 +74,7 @@ def class_weights_capped(y, max_ratio=1.8):
 def best_threshold_binary(y_true, probs):
     best_t, best_f1 = 0.5, -1
     for t in np.linspace(0.1, 0.9, 33):
-        f1 = f1_score(y_true, (probs >= t).astype(int), zero_division=0)
+        f1 = f1_score(y_true, (probs >= t).astype(int), average="macro", zero_division=0)
         if f1 > best_f1:
             best_f1, best_t = f1, t
     return float(best_t)
@@ -131,7 +140,7 @@ def train_single_task(data, device, seed):
 
     thr = best_threshold_binary(y_dv, best_probs)
     preds = (best_probs >= thr).astype(int)
-    f1 = f1_score(y_dv, preds, zero_division=0)
+    f1 = f1_score(y_dv, preds, average="macro", zero_division=0)
     return float(f1), float(best_auc)
 
 
@@ -299,8 +308,11 @@ def main():
 
     report = {
         "analysis": "Scaled paired significance test: multi-task vs single-task "
-                     "tri-modal F1, powered per power_analysis.json (n>=67 needed "
-                     "for 80% power at d=0.344)",
+                     "tri-modal macro-F1 (both arms corrected to average='macro' "
+                     "after a post-hoc review found the first version compared "
+                     "binary F1 (single-task) against macro F1 (multi-task)), "
+                     "powered per power_analysis.json (n>=67 needed for 80% "
+                     "power at d=0.344)",
         "n_seeds": N_SEEDS,
         "seeds": SEEDS,
         "single_task_f1_mean": round(float(single_f1s.mean()), 4),

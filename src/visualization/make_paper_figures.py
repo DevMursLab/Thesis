@@ -500,16 +500,25 @@ def fig_learning_curve():
 
 
 def fig_sentinel_fix():
-    """OpenFace -100 sentinel contamination: effect on face-only and tri-modal."""
+    """OpenFace -100 sentinel contamination: effect on face-only and tri-modal.
+
+    The face-only panel's annotation was previously a hand-typed
+    "p=0.031, d=1.43" that did not match any reproducible computation on
+    the underlying 5-seed data (the correct exact two-sided Wilcoxon value
+    is p=0.0625). It now reports the scaled, correctly-computed n=30 test
+    from face_sentinel_significance_scaled.json instead.
+    """
     f = json.load(open(METRICS / "face_sentinel_ablation.json"))
     t = json.load(open(METRICS / "trimodal_sentinel_ablation.json"))
+    fs = json.load(open(METRICS / "face_sentinel_significance_scaled.json"))
 
     fig, axes = plt.subplots(1, 2, figsize=(9.2, 4.0))
 
     for ax, d, title, note in zip(
             axes, [f, t],
             ["Face-only configuration", "Tri-modal configuration"],
-            ["5/5 seeds improved\nWilcoxon $p$=0.031, $d$=1.43",
+            [f"{fs['wins_cleaned']} seeds improved (n=30, scaled)\n"
+             f"Wilcoxon $p$={fs['wilcoxon_p_value']:.1e}, $d$={fs['cohens_d']:.2f}",
              "2/5 seeds improved\nWilcoxon $p$=0.313 (n.s.)"]):
         arms = ["original", "cleaned"]
         means = [d[a]["auc_mean"] for a in arms]
