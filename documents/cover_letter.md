@@ -33,12 +33,13 @@ Within the same testbed we evaluate three common design choices. The most
 promising, symptom-level multi-task learning, raises mean macro-F1 from
 0.607±0.063 to 0.629±0.021 at an original 5-seed sample; a power analysis of
 that comparison showed it was underpowered (n≈67 seeds needed for 80% power),
-so we rescaled the paired significance test to 70 seeds. This confirms a
-large, statistically decisive effect (65/70 seeds favor multi-task, Wilcoxon
-p=2.3×10⁻¹², d=1.17) and additionally reveals that the single-task baseline
-is far less seed-stable than the original 5-seed sample suggested — a
-concrete, within-pipeline demonstration of the seed-sampling risk this paper
-raises as a broader methodological concern. Cross-modal attention and an
+so we rescaled the paired significance test to 70 seeds. This confirms the
+effect (51/70 seeds favor multi-task, Wilcoxon p=8.1×10⁻⁷, d=0.72, larger
+than the d=0.34 the original power calculation assumed) — a concrete,
+within-pipeline demonstration of how an underpowered n=5 significance test
+can leave a real, confirmable effect looking merely suggestive, which is the
+same seed-sampling risk this paper raises as a broader methodological
+concern. Cross-modal attention and an
 Equalized Odds fairness loss remain evaluated at 10 seeds and do not reach
 significance at this sample size (p=0.496 and p=0.813); we report both as
 transparent negative/inconclusive findings rather than reframing them as

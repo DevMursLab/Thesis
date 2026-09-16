@@ -50,115 +50,49 @@ Code: \url{https://github.com/DevMursLab/Thesis}.}%
 \begin{abstract}
 Reported performance for automated depression screening on the
 DAIC-WOZ corpus varies by more than 20 AUC points across the
-literature under seemingly minor pipeline differences, and few
-studies directly test whether their models capture depression-specific
-signal as opposed to interview structure, tracking-software artifacts,
-or corpus-specific acoustic idiosyncrasies. We conduct a systematic
-validity audit of a tri-modal (facial action units, acoustic features,
-transcript text) depression-risk pipeline built on a single
-\texttt{ConfigurableFusionModel} class instantiated across seven
-modality subsets (5~seeds each), and surface three failure modes that
-plausibly account for a substantial share of this cross-study
-variance: a silent data-corruption bug in the visual stream, an
-interview-structure shortcut in the text stream, and non-transferable,
-corpus-specific representations in both audio and text. Within the
-same controlled testbed we also evaluate three common design choices
-(symptom-level multi-task learning, cross-modal attention, and an
-Equalized-Odds fairness loss); the most promising of these,
-\emph{multi-task learning}---jointly predicting the binary label,
-PHQ-8 score, and eight symptom items---raises mean macro-F1 from
-$0.607\pm0.063$ to $0.629\pm0.021$ on the official dev split
-($N{=}34$) in the originally-reported 5-seed sample. A post-hoc power
-analysis of that 5-seed paired test (Cohen's~$d{=}0.34$) showed
-$n{\approx}67$ paired seeds would be needed for 80\% power, so we
-scaled the paired Wilcoxon test to 70~seeds. This both confirms the
-effect and reveals it is larger than the 5-seed estimate suggested:
-across the full 70~seeds the single-task baseline itself is far less
-stable than the original 5-seed sample implied
-($0.464\pm0.164$, range $[0.14,0.71]$, vs.\ the originally-reported
-$0.607\pm0.063$), while the multi-task model remains stable and
-strong ($0.657\pm0.037$); multi-task wins 65/70~paired seeds
-(Wilcoxon $p{=}2.3{\times}10^{-12}$, $d{=}1.17$). Multi-task learning
-is therefore a statistically
-confirmed, large-effect headline result, and the original 5-seed
-single-task estimate was itself an optimistic small-sample draw---a
-concrete illustration, within our own pipeline, of the seed-sampling
-risk this paper warns about elsewhere. On the held-out test
-split ($N{=}47$), the
-model achieves F1\,$=0.585$ and AUC\,$=0.706$, exceeding the dev AUC
-and indicating generalization beyond the dev set; male and female
-TPR are numerically equal on this split (0.286 each), though both
-are low in absolute terms and pooled 10-fold cross-validation over
-all 188 participants shows this equality is not stable across folds
-(mean TPR gap~$0.415\pm0.211$). We additionally
-evaluate cross-modal attention fusion and an Equalized Odds fairness
-loss in 10-seed paired Wilcoxon experiments; neither reaches
-significance at this sample size (F1 $p{=}0.496$; TPR-gap
-$p{=}0.813$), and post-hoc power analysis shows the study is
-genuinely underpowered for these effect sizes rather than showing
-true null effects. We report both as transparent negative/inconclusive
-findings rather than reframing them as successes. Three convergent
-explainability methods (attention rollout, gradient$\times$input
-saliency, occlusion ablation) independently identify audio as the
-most informative modality on the dev split, and gradient saliency
-places the clinically-established marker AU04 (Brow Lowerer) within
-its top-5 attributed facial features, though not as the single
-top-ranked feature. A zero-shot cross-corpus probe of the strongest
-unimodal (audio) model on EATD-Corpus, an independent Chinese-language
-depression dataset, collapses from in-domain AUC\,$=0.735$ to
-AUC\,$=0.531$ (95\% CI $[0.406,0.653]$)---statistically
-indistinguishable from chance---indicating the learned acoustic
-representation is corpus/language-specific rather than a
-transferable biomarker. A second, independent probe of the text
-modality on WU3D \cite{wang2020wu3d} (32,540 Weibo users,
-DSM-5-rechecked labels) replicates this collapse with a far tighter
-bound (AUC\,$=0.506$, 95\% CI $[0.5008,0.5121]$), traced directly to
-55.9\% of cross-lingual documents producing all-zero TF-IDF vectors.
-We additionally audit a known DAIC-WOZ
-validity concern---text models that include the virtual
-interviewer's utterances can reach high performance by exploiting
-\emph{which} questions are asked rather than what the patient says
-\cite{bailey2024shortcut}---and confirm it directly in our own
-pipeline: an interviewer-only text model that never sees a single
-word spoken by the patient reaches test AUC~$=0.738$, exceeding our
-participant-only model's AUC~$=0.610$, because the interviewer's
-follow-up questions (e.g.\ ``how long ago were you diagnosed'') are
-selectively asked of participants who already disclosed treatment
-history. This audit substantiates our participant-only design choice
-and reframes our comparatively modest headline numbers as evidence
-of validity rather than a shortcoming relative to literature values
-obtained with interviewer text included. Auditing the visual feature
-stream likewise uncovers a data-handling fault: OpenFace encodes
-tracking failure in the binary AU channels with a $-100$ sentinel that
-survives the usual confidence filter and, under per-participant
-z-scoring, compresses the genuine signal $\approx$79$\times$. Removing
-sentinel-carrying frames lifts the face-only configuration from chance
-(AUC\,$=0.513\pm0.113$) to $0.708\pm0.042$ at the original 5-seed
-protocol. A post-hoc check found that comparison's originally-reported
-$p{=}0.031$ could not be reproduced from its own stored per-seed
-results (the correct exact two-sided Wilcoxon value for that data is
-$p{=}0.0625$, consistent with the fact that no exact two-sided test
-at $n{=}5$ can fall below that value); we therefore re-ran the
-comparison from scratch at $n{=}30$ seeds, which confirms a real,
-correctly-computed, large effect (28/30 seeds improving, AUC
-$0.506\pm0.131\to0.678\pm0.048$, Wilcoxon $p{=}9.3{\times}10^{-6}$,
-$d{=}1.28$)---a data-quality rather than a
-modelling effect---while leaving the single-task tri-modal result
-unchanged ($p{=}0.313$), indicating the recovered facial signal is
-largely redundant with audio and text. Probing diagnostic specificity on an
-English multi-category mental-health corpus (length-matched to remove a
-10$\times$ post-length confound), the model transfers
-(depression vs.\ normal AUC\,$=0.678$) but separates depression from
-other distress categories only weakly (vs.\ suicidality $0.573$;
-vs.\ anxiety $0.568$), partially supporting the concern that DAIC-WOZ
-classifiers capture disorder-general rather than depression-specific
-signal. A learning-curve analysis
-subsampling the 107-participant train pool shows AUC rising from
-$0.572$ at $N{=}32$ to $0.725$ at $N{=}91$ with no clear plateau,
-directly supporting our repeated attribution of non-significant
-effects to sample size rather than architecture. Our contribution is
-methodological rigor and transparent reporting---including honest
-limitations---rather than state-of-the-art performance.
+literature under seemingly minor pipeline differences. We conduct a
+systematic validity audit of a tri-modal (facial action units,
+acoustic features, transcript text) depression-risk pipeline and
+surface three failure modes that plausibly account for a substantial
+share of this cross-study variance: (1)~a $-100$ missing-data
+sentinel in OpenFace's binary AU channels that survives standard
+confidence filtering and, under per-participant z-scoring, compresses
+the genuine facial signal $\approx$79$\times$, holding a face-only
+model at chance (AUC~$0.513\to0.708$ once corrected; scaled $n{=}30$
+re-test, Wilcoxon $p{=}9.3{\times}10^{-6}$, $d{=}1.28$); (2)~a direct
+demonstration that DAIC-WOZ text models can learn interview structure
+instead of depression language---an interviewer-only model with zero
+access to patient words reaches test AUC~$=0.738$, exceeding our
+participant-only model's AUC~$=0.610$; and (3)~cross-corpus transfer
+collapsing to chance for both audio (EATD-Corpus, AUC~$0.735\to0.531$)
+and text (WU3D, 32,540 users, AUC~$0.506$), indicating the learned
+representations are corpus/language-specific rather than transferable
+biomarkers. Within the same controlled testbed, symptom-level
+multi-task learning raises mean macro-F1 from $0.607$ to $0.629$ at
+an originally-reported, underpowered 5-seed sample ($n{\approx}67$
+needed for 80\% power); scaling to $n{=}70$ paired seeds confirms the
+effect (macro-F1 $0.597\pm0.076\to0.657\pm0.037$, Wilcoxon
+$p{=}8.1{\times}10^{-7}$, $d{=}0.72$), while cross-modal attention and
+an Equalized Odds fairness loss remain non-significant at $n{=}10$
+seeds and are reported as transparent negative/inconclusive findings.
+On the held-out test split ($N{=}47$), the model achieves
+F1~$=0.585$, AUC~$=0.706$, exceeding dev AUC and indicating
+generalization; pooled 10-fold cross-validation over all 188
+participants shows the test split's nominal gender-TPR parity is not
+stable across folds (mean TPR gap~$0.415\pm0.211$). Three convergent
+explainability methods identify audio as the most informative
+modality on dev, and gradient saliency places the clinically-known
+marker AU04 within its top-5 attributed facial features, though not
+top-ranked. An external diagnostic-specificity probe finds the model
+separates depression from normal controls (AUC~$0.678$) but only
+weakly from suicidality ($0.573$) or anxiety ($0.568$), partially
+supporting the concern that DAIC-WOZ classifiers capture
+disorder-general rather than depression-specific signal. We distill
+these audits into a six-item, reusable validity checklist for other
+DAIC-WOZ studies. Our contribution is methodological rigor and
+transparent reporting---including corrected computational errors
+found during review and honest negative results---rather than
+state-of-the-art performance.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -250,12 +184,12 @@ confounds. Concretely, we contribute:
   dismissed as an architectural weakness of that branch. Within this
   testbed we evaluate symptom-level multi-task learning, cross-modal
   attention, and Equalized Odds fairness training. A power analysis of
-  the original 5-seed multi-task test showed it was underpowered
-  ($n{\approx}67$ needed for 80\% power), so we scaled that comparison
-  to 70~paired seeds: multi-task learning is a confirmed, large effect
-  (65/70~seeds, Wilcoxon $p{=}2.3{\times}10^{-12}$, $d{=}1.17$), and
-  the scaled run additionally reveals the single-task baseline is far
-  more seed-unstable than the original 5-seed sample suggested.
+  the original 5-seed multi-task test showed it was structurally too
+  small for an exact Wilcoxon test to reach significance under any
+  outcome ($n{\approx}67$ needed for 80\% power), so we scaled that
+  comparison to 70~paired seeds: multi-task learning is a confirmed
+  effect (51/70~seeds, Wilcoxon $p{=}8.1{\times}10^{-7}$, $d{=}0.72$),
+  a larger effect than the original power calculation assumed.
   Cross-modal attention and Equalized Odds fairness training remain
   evaluated at 10~seeds and do not reach significance at this sample
   size (attention $p{=}0.496$; fairness $p{=}0.813$), with a post-hoc
@@ -848,37 +782,35 @@ paired seeds would be needed for 80\% power at $\alpha{=}0.05$; we
 therefore scaled the comparison to $n{=}70$ paired seeds (seeds
 $1$--$70$), re-training both arms from scratch at each seed.
 
-The scaled test resolves the question decisively, and in doing so
-changes the headline finding. Across 70 seeds, the multi-task model
-remains stable and strong (mean F1~$=0.657\pm0.037$), while the
-single-task baseline turns out to be far less stable than the
-original 5-seed sample implied (mean F1~$=0.464\pm0.164$, range
-$[0.14,0.71]$ across seeds): several single-task seeds collapse to
-near-degenerate F1 despite acceptable AUC ($0.60$--$0.72$), indicating
+The scaled test resolves the question decisively. Across 70 seeds,
+the multi-task model remains stable and strong (mean
+F1~$=0.657\pm0.037$), while the single-task baseline shows somewhat
+higher variance than the original 5-seed sample implied (mean
+F1~$=0.597\pm0.076$, range $[0.46,0.77]$ across seeds, vs.\ the
+originally-reported $0.607\pm0.063$): several single-task seeds
+show reduced F1 despite acceptable AUC ($0.60$--$0.72$), suggesting
 the single-task model's discriminative ranking is often fine but its
-decision threshold is highly seed-sensitive on this small dev set,
-whereas the multi-task heads and modality dropout regularize this
-away. The paired Wilcoxon test is now unambiguous: multi-task wins
-65 of 70 seed pairs (Wilcoxon $p{=}2.3{\times}10^{-12}$,
-Cohen's~$d{=}1.17$, a large effect exceeding the $d{=}0.34$ estimated
-from the original 5 seeds). We verified that the original 5 seeds
-($42,1,7,123,2024$) are not representative of the full 70-seed
-distribution---their single-task F1 values ($0.63,0.71,0.53$ for the
-three that overlap with the $1$--$70$ range) sit well above the
-70-seed mean---so the originally-reported $0.607\pm0.063$ single-task
-baseline was itself an optimistic small-sample draw, not a
-representative estimate. This is a concrete, within-pipeline
-demonstration of the same seed-sampling risk this paper otherwise
-raises as an external methodological concern
-\cite{bouthillier2021}: at $n{=}5$, both the effect size and the
-baseline it is measured against can be substantially misestimated in
-either direction.
+decision threshold is more seed-sensitive on this small dev set than
+the multi-task heads and modality dropout, which regularize this
+partially away. The paired Wilcoxon test is now unambiguous: multi-task
+wins 51 of 70 seed pairs (Wilcoxon $p{=}8.1{\times}10^{-7}$,
+Cohen's~$d{=}0.72$)---a medium-to-large effect that is in fact larger
+than the $d{=}0.34$ assumed for the original power calculation,
+meaning that calculation was itself conservative and fewer than the
+estimated 67~seeds would likely have sufficed; scaling to 70 removes
+any doubt. The original 5-seed mean ($0.607\pm0.063$) is close to,
+not dramatically below, the 70-seed mean, so its main limitation was
+that $n{=}5$ is structurally too few for an exact Wilcoxon test to
+reach significance (Section~\ref{sec:ablation} above), not that the
+mean itself was badly biased. This is nonetheless a concrete,
+within-pipeline illustration of the seed-sampling risk this paper
+otherwise raises as an external methodological concern
+\cite{bouthillier2021}: small seed counts can leave a real,
+confirmable effect looking merely suggestive.
 
 Taken together, these results show multi-task learning is a
-statistically confirmed, large-effect result, not merely an
-encouraging trend, and its benefit is larger than the 5-seed sample suggested
-because it also suppresses a single-task instability that a 5-seed
-sample was too small to reveal. We note this comparison still bundles
+statistically confirmed result at this sample size, not merely an
+encouraging trend. We note this comparison still bundles
 two simultaneous changes---the multi-task prediction heads and the
 extended 199-dim MFCC+COVAREP+FORMANT audio features, versus the
 single-task baseline's 120-dim MFCC-only audio---so this result
@@ -900,7 +832,7 @@ proposed architectural addition improves on a shared tri-modal
 baseline. Applying a Bonferroni correction across this family of
 three ($\alpha=0.05/3=0.0167$) does not change any conclusion: the
 scaled multi-task result remains significant by a wide margin
-($p{=}2.3{\times}10^{-12}\times3=6.9{\times}10^{-12}$, still far below
+($p{=}8.1{\times}10^{-7}\times3=2.4{\times}10^{-6}$, still far below
 $\alpha$), while the attention ($p{=}0.496$) and fairness ($p{=}0.813$)
 comparisons remain non-significant under either the corrected or
 uncorrected threshold. We report this correction for completeness
@@ -914,13 +846,13 @@ inconclusive comparisons were already reported as such.
   \includegraphics[width=\columnwidth]{fig4_seed_consistency.png}
   \caption{Single-task baseline vs.\ proposed multi-task model F1,
     box plot with individual seeds overlaid, across the full scaled
-    test ($n{=}70$ paired seeds). The single-task baseline's wide
-    spread (range $[0.14,0.71]$, mean $0.464\pm0.164$) against the
-    multi-task model's tight cluster (mean $0.657\pm0.037$) is the
-    same instability the Statistical note describes numerically. At
+    test ($n{=}70$ paired seeds). The single-task baseline shows
+    somewhat higher seed-to-seed spread (range $[0.46,0.77]$, mean
+    $0.597\pm0.076$) than the multi-task model's tighter cluster
+    (mean $0.657\pm0.037$), consistent with the Statistical note. At
     the original $n{=}5$ sample this comparison was inconclusive
     ($p{=}0.625$); the full $n{=}70$ test is decisive
-    ($p{=}2.3{\times}10^{-12}$, $d{=}1.17$, wins 65/70).}
+    ($p{=}8.1{\times}10^{-7}$, $d{=}0.72$, wins 51/70).}
   \label{fig:seeds}
 \end{figure}
 
@@ -931,10 +863,11 @@ inconclusive comparisons were already reported as such.
     mean\,$\pm$\,std. \emph{Left:} the original 5-seed sample
     ($0.607\pm0.063\to0.629\pm0.021$, underpowered paired test,
     $p{=}0.625$). \emph{Right:} the scaled 70-seed test
-    ($0.464\pm0.164\to0.657\pm0.037$, confirmed,
-    $p{=}2.3{\times}10^{-12}$). The larger gap and larger single-task
-    std at $n{=}70$ reflect the single-task baseline instability the
-    original 5-seed sample did not capture.}
+    ($0.597\pm0.076\to0.657\pm0.037$, confirmed,
+    $p{=}8.1{\times}10^{-7}$). The 70-seed single-task mean is close
+    to the original 5-seed estimate; the decisive difference is that
+    $n{=}70$ gives the exact Wilcoxon test enough seeds to reach
+    significance, which $n{=}5$ cannot under any outcome.}
   \label{fig:p7p8}
 \end{figure}
 
@@ -2017,13 +1950,15 @@ split in the original 5-seed sample. A power analysis of that 5-seed
 paired comparison indicated it was underpowered
 ($n{\approx}67$ needed for 80\% power), so we scaled the paired
 Wilcoxon test to $n{=}70$ seeds (Section~\ref{sec:ablation}). This
-confirms a large, significant effect (65/70~seed pairs favor
-multi-task, $p{=}2.3{\times}10^{-12}$, $d{=}1.17$) and additionally
-reveals that the single-task baseline is far less stable across
-seeds than the original 5-seed sample suggested
-($0.464\pm0.164$ over 70~seeds vs.\ the originally-reported
-$0.607\pm0.063$)---multi-task learning is therefore now reported as a
-statistically confirmed, large-effect headline result rather than an
+confirms a significant effect (51/70~seed pairs favor
+multi-task, $p{=}8.1{\times}10^{-7}$, $d{=}0.72$, larger than the
+$d{=}0.34$ the original power calculation assumed), while the
+single-task baseline's 70-seed mean ($0.597\pm0.076$) is close to the
+originally-reported $0.607\pm0.063$---the original 5-seed test's main
+limitation was that $n{=}5$ is structurally too small for an exact
+Wilcoxon test to reach significance, not a badly biased mean.
+Multi-task learning is therefore now reported as a
+statistically confirmed headline result rather than an
 encouraging trend. Two additional design choices---cross-modal
 attention fusion and Equalized Odds fairness training---remain
 evaluated at $n{=}10$ paired Wilcoxon seeds and are reported as
@@ -2060,7 +1995,7 @@ techniques on small clinical cohorts, rather than reframing them as
 successes. By contrast, the multi-task comparison---rescaled to
 $n{=}70$ paired seeds once a power analysis flagged the original
 $n{=}5$ test as underpowered---does reach significance
-($p{=}2.3{\times}10^{-12}$, $d{=}1.17$); we highlight this as an
+($p{=}8.1{\times}10^{-7}$, $d{=}0.72$); we highlight this as an
 example of what resolving an underpowered comparison can reveal, and
 recommend the same rescaling wherever feasible for the two
 comparisons that remain inconclusive.
