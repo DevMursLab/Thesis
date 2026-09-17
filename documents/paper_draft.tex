@@ -1202,6 +1202,19 @@ Three mechanistically independent attribution methods are applied to
 the trained model. Convergence across independent methods is stronger
 evidence than any single technique alone \cite{abnar2020}.
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig13_explainability.png}
+  \caption{Three convergent explainability methods. (a)~Attention
+    rollout ranks modality importance (audio highest, face and text
+    close behind). (b)~Gradient$\times$input saliency over the top-6
+    attributed AU channels: AU04 (highlighted) ranks fifth, within
+    the top~5 but not top-ranked. (c)~Occlusion ablation: removing
+    audio or text costs $\approx$4$\times$ the AUC that removing face
+    does, consistent with (a).}
+  \label{fig:explainability}
+\end{figure}
+
 \textbf{Cross-modal attention rollout} \cite{abnar2020}:
 Audio receives the highest mean attention weight~(0.39), followed
 by text~(0.31) and face~(0.30). This is consistent with the

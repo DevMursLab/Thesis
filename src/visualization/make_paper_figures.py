@@ -557,6 +557,63 @@ def fig_sentinel_fix():
     print("  fig12_sentinel_fix.png")
 
 
+def fig_explainability():
+    """Fig 13 -- Three convergent explainability methods: attention
+    rollout (modality importance), gradient x input saliency (top AU
+    channels, AU04 highlighted), and occlusion ablation (AUC drop)."""
+    d = load("phase6_explainability.json")
+
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.6))
+
+    # (a) Attention rollout: modality importance
+    ax = axes[0]
+    mi = d["attention_rollout"]["modality_importance"]
+    mods = ["face", "audio", "text"]
+    vals = [mi[m] for m in mods]
+    colors = [NAVY, CORAL, TEAL]
+    bars = ax.bar(mods, vals, color=colors, edgecolor="black", linewidth=0.7, width=0.6)
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.01, f"{v:.3f}",
+                ha="center", fontsize=8, weight="bold")
+    ax.set_ylabel("Attention weight")
+    ax.set_ylim(0, 0.5)
+    ax.set_title("(a) Attention Rollout\nModality Importance", fontsize=9.5)
+
+    # (b) Gradient x input saliency: top AU channels
+    ax = axes[1]
+    top = list(d["au_saliency"].items())[:6]
+    names = [n.replace(" (intensity)", "").replace(" (presence)", "*") for n, _ in top]
+    vals2 = [v for _, v in top]
+    is_au04 = [n.startswith("AU04") for n, _ in top]
+    colors2 = [CORAL if hit else PURPLE for hit in is_au04]
+    y = range(len(names))
+    ax.barh(list(y), vals2, color=colors2, edgecolor="black", linewidth=0.7)
+    ax.set_yticks(list(y))
+    ax.set_yticklabels(names, fontsize=8)
+    ax.invert_yaxis()
+    ax.set_xlabel("Gradient$\\times$input saliency")
+    ax.set_title("(b) Top-6 Attributed AU\nChannels (AU04 highlighted)", fontsize=9.5)
+
+    # (c) Occlusion ablation: AUC drop per modality
+    ax = axes[2]
+    drop = d["ablation_auc_drop"]
+    labels3 = ["Face", "Audio", "Text"]
+    keys3 = ["without_face", "without_audio", "without_text"]
+    vals3 = [drop[k] for k in keys3]
+    bars3 = ax.bar(labels3, vals3, color=[NAVY, CORAL, TEAL],
+                   edgecolor="black", linewidth=0.7, width=0.6)
+    for b, v in zip(bars3, vals3):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.001, f"{v:.4f}",
+                ha="center", fontsize=8, weight="bold")
+    ax.set_ylabel("AUC drop when modality removed")
+    ax.set_title("(c) Occlusion Ablation\n(dev split)", fontsize=9.5)
+
+    plt.tight_layout()
+    plt.savefig(FIGURES / "fig13_explainability.png")
+    plt.close()
+    print("  fig13_explainability.png")
+
+
 def main():
     print("Generating publication-quality figures...")
     fig_architecture()
@@ -571,7 +628,8 @@ def main():
     fig_cross_corpus()
     fig_learning_curve()
     fig_sentinel_fix()
-    print(f"\nAll 12 figures saved to {FIGURES}/")
+    fig_explainability()
+    print(f"\nAll 13 figures saved to {FIGURES}/")
 
 
 if __name__ == "__main__":
