@@ -15,6 +15,15 @@ util.zip
 documents/*.pdf
 documents/*.m
 documents/paper_submission_overleaf.zip
+# Figures copied here for local live-compile only (source of truth: results/figures/)
+documents/fig*.png
+documents/*.aux
+documents/*.log
+documents/*.fls
+documents/*.fdb_latexmk
+documents/*.bbl
+documents/*.blg
+documents/*.out
 
 # Reference PDFs (not source code)
 *.pdf
