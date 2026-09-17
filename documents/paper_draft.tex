@@ -161,7 +161,7 @@ confounds. Concretely, we contribute:
   sentinel values. (b)~\emph{DAIC-WOZ text models can learn interview
   structure instead of depression language:} building on a concern
   raised by recent reproducibility work
-  \cite{bailey2024shortcut,patapati2025invalid}, an interviewer-only
+  \cite{burdisso2024therapist,patapati2025invalid}, an interviewer-only
   text model---with zero access to any word the patient
   says---reaches test AUC~$=0.738$, \emph{exceeding} our
   participant-only model's AUC~$=0.610$ (Section~\ref{sec:shortcut}).
@@ -268,7 +268,7 @@ features to reach F1~=~0.70. Ray et al.\ \cite{ray2019} employed
 BERT for transcript encoding alongside audio features, achieving
 AUC~=~0.80. Several
 of these higher numbers are obtained with interviewer text included;
-recent validity audits \cite{bailey2024shortcut,patapati2025invalid}
+recent validity audits \cite{burdisso2024therapist,patapati2025invalid}
 show this can inflate performance through interview-structure
 shortcuts rather than depression-specific language, a concern we
 test directly in our own pipeline (Section~\ref{sec:shortcut}).
@@ -1588,7 +1588,7 @@ failure.
 \end{figure}
 
 A growing body of work questions the validity of DAIC-WOZ text results.
-Bailey and Plumbley \cite{bailey2024shortcut} show that text models
+Burdisso et al.\ \cite{burdisso2024therapist} show that text models
 including the virtual interviewer's (Ellie's) utterances can reach
 F1~=~0.90---not by detecting depression, but by exploiting \emph{which}
 questions Ellie asks: the semi-structured interview branches into a
@@ -2059,7 +2059,9 @@ diagnostic-specificity probes (Section~\ref{sec:discussion}), are all
 publicly available datasets. All source code, trained model
 configurations, and result artifacts (excluding the restricted raw
 dataset) are available at
-\url{https://github.com/DevMursLab/Thesis}.
+\url{https://github.com/DevMursLab/Thesis}, with the exact version
+underlying this manuscript archived at
+\url{https://doi.org/10.5281/zenodo.22806159} (v1.0.0).
 
 \subsection*{Reproducibility Details}
 All experiments use Python~3.10, PyTorch~$\geq$2.0, scikit-learn~$\geq$1.3,
@@ -2149,23 +2151,25 @@ in \textit{Proc. 7th ACM Int. Workshop Audio/Visual Emotion
 Challenge (AVEC)}, 2017, pp.~53--60.
 
 \bibitem{williamson2016}
-J.~R.~Williamson, E.~Godoy, M.~Cha, A.~Schwarzenthal,
-D.~Quatieri, and J.~M.~Liss,
+J.~R.~Williamson, E.~Godoy, M.~Cha, A.~Schwarzentruber,
+P.~Khorrami, Y.~Gwon, H.~T.~Kung, C.~K.~Dagli, and T.~F.~Quatieri,
 ``Detecting depression using vocal, facial and semantic
 communication cues,'' in \textit{Proc. 6th Int. Workshop
 Audio/Visual Emotion Challenge (AVEC)}, 2016, pp.~11--18.
 
 \bibitem{ray2019}
-A.~Ray, S.~Kumar, R.~Reddy, P.~Desai, and R.~Garg,
+A.~Ray, S.~Kumar, R.~Reddy, P.~Mukherjee, and R.~Garg,
 ``Multi-level attention network using text, audio and video
 for depression prediction,'' in \textit{Proc. 9th Int. Workshop
 Audio/Visual Emotion Challenge (AVEC)}, 2019, pp.~81--88.
 
-\bibitem{bailey2024shortcut}
-A.~Bailey and M.~D.~Plumbley,
+\bibitem{burdisso2024therapist}
+S.~Burdisso, E.~Reyes-Ram\'irez, E.~Villatoro-Tello,
+F.~S\'anchez-Vega, A.~Lopez-Monroy, and P.~Motlicek,
 ``DAIC-WOZ: On the validity of using the therapist's prompts
 in automatic depression detection from clinical interviews,''
-\textit{arXiv preprint arXiv:2404.14463}, 2024.
+in \textit{Proc. 6th Clinical Natural Language Processing
+Workshop}, 2024, pp.~82--90.
 
 \bibitem{patapati2025invalid}
 S.~V.~Patapati, I.~Pendyala, M.~Ambati, P.~Kunadharaju,
@@ -2251,7 +2255,7 @@ in \textit{Proc. IEEE Int. Conf. Acoust., Speech, Signal Process.
 (ICASSP)}, Singapore, 2022, pp.~6247--6251.
 
 \bibitem{bouthillier2021}
-X.~Bouthillier, C.~Laurent, and P.~Vincent,
+X.~Bouthillier, P.~Delaunay, M.~Bronzi, \emph{et al.},
 ``Accounting for variance in machine learning benchmarks,''
 in \textit{Proc. Mach. Learn. Syst. (MLSys)}, 2021.
 
