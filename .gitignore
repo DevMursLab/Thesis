@@ -40,7 +40,10 @@ results/metrics/*
 !results/metrics/phase*.json
 !results/metrics/test_evaluation.json
 !results/metrics/multitask_significance_scaled.json
+!results/metrics/multitask_significance_scaled_per_seed.csv
+!results/metrics/multitask_significance_scaled_SUPERSEDED_metric_bug.json
 !results/metrics/face_sentinel_significance_scaled.json
+!results/metrics/face_sentinel_significance_scaled_per_seed.csv
 
 # Jupyter
 .ipynb_checkpoints/

@@ -58,8 +58,9 @@ share of this cross-study variance: (1)~a $-100$ missing-data
 sentinel in OpenFace's binary AU channels that survives standard
 confidence filtering and, under per-participant z-scoring, compresses
 the genuine facial signal $\approx$79$\times$, holding a face-only
-model at chance (AUC~$0.513\to0.708$ once corrected; scaled $n{=}30$
-re-test, Wilcoxon $p{=}9.3{\times}10^{-6}$, $d{=}1.28$); (2)~a direct
+model at chance; removing sentinel-carrying frames raises face-only
+AUC from $0.506$ to $0.678$ ($n{=}30$ paired seeds, 28/30 improving,
+Wilcoxon $p{=}9.3{\times}10^{-6}$, $d{=}1.28$); (2)~a direct
 demonstration that DAIC-WOZ text models can learn interview structure
 instead of depression language---an interviewer-only model with zero
 access to patient words reaches test AUC~$=0.738$, exceeding our
@@ -71,7 +72,8 @@ biomarkers. Within the same controlled testbed, symptom-level
 multi-task learning raises mean macro-F1 from $0.607$ to $0.629$ at
 an originally-reported, underpowered 5-seed sample ($n{\approx}67$
 needed for 80\% power); scaling to $n{=}70$ paired seeds confirms the
-effect (macro-F1 $0.597\pm0.076\to0.657\pm0.037$, Wilcoxon
+effect of the combined intervention (multi-task heads plus extended
+audio features; macro-F1 $0.597\pm0.076\to0.657\pm0.037$, Wilcoxon
 $p{=}8.1{\times}10^{-7}$, $d{=}0.72$), while cross-modal attention and
 an Equalized Odds fairness loss remain non-significant at $n{=}10$
 seeds and are reported as transparent negative/inconclusive findings.
@@ -90,8 +92,8 @@ supporting the concern that DAIC-WOZ classifiers capture
 disorder-general rather than depression-specific signal. We distill
 these audits into a six-item, reusable validity checklist for other
 DAIC-WOZ studies. Our contribution is methodological rigor and
-transparent reporting---including corrected computational errors
-found during review and honest negative results---rather than
+transparent reporting---including honest negative results and
+explicit statistical-power analysis---rather than
 state-of-the-art performance.
 \end{abstract}
 
@@ -151,9 +153,9 @@ confounds. Concretely, we contribute:
   the standard confidence filter and, under per-participant z-scoring,
   compresses the genuine signal $\approx$79$\times$
   (Section~\ref{sec:sentinel}); removing the affected frames raises
-  face-only AUC from $0.513\pm0.113$ to $0.708\pm0.042$, confirmed by a
-  scaled, correctly-computed re-test at $n{=}30$ seeds (28/30 seeds
-  improving, Wilcoxon $p{=}9.3{\times}10^{-6}$, $d{=}1.28$)---this is
+  face-only AUC from $0.506$ to $0.678$ across $n{=}30$ paired seeds
+  (28/30 seeds improving, Wilcoxon $p{=}9.3{\times}10^{-6}$,
+  $d{=}1.28$)---this is
   the kind of silent data-corruption bug that can produce a false null
   result in any pipeline reusing OpenFace output without auditing
   sentinel values. (b)~\emph{DAIC-WOZ text models can learn interview
@@ -264,8 +266,7 @@ multimodal audio-visual handcrafted features. Gong and Poellabauer
 \cite{gong2017} combined LDA topic-model text features with acoustic
 features to reach F1~=~0.70. Ray et al.\ \cite{ray2019} employed
 BERT for transcript encoding alongside audio features, achieving
-AUC~=~0.80. More recent transformer-based approaches
-\cite{shen2022} report AUC~$\approx$~0.83 on extended splits. Several
+AUC~=~0.80. Several
 of these higher numbers are obtained with interviewer text included;
 recent validity audits \cite{bailey2024shortcut,patapati2025invalid}
 show this can inflate performance through interview-structure
@@ -295,7 +296,7 @@ interviewer-prompt shortcut (Section~\ref{sec:shortcut}) from any
 confound introduced by a different text architecture. To our
 knowledge, none of the prior DAIC-WOZ studies cited above audit for
 either failure mode, and the wide spread of reported AUC/F1 values
-across this literature (0.49--0.83) is consistent with at least some
+across this literature (0.49--0.80) is consistent with at least some
 of that variance reflecting uncontrolled versions of the same issues
 rather than genuine modelling gains.
 
@@ -476,10 +477,10 @@ parameter, and 24~Mel Cepstral Prediction (MCEP) coefficients
 reduced F0 range, and breathier voice quality.
 
 \textbf{FORMANT} (5-dim): F1--F5 formant frequencies capturing
-vocal tract resonance. Scherer et al.\ \cite{scherer2015vowel}
+vocal tract resonance. Scherer et al.\ \cite{scherer2016vowel}
 demonstrated reduced vowel space (compressed F1-F2 dispersion) in
 individuals self-reporting depression/PTSD symptoms, distinct from
-the voice-quality features described above \cite{scherer2015}.
+the voice-quality features described above \cite{scherer2013voice}.
 
 All three streams are independently z-score normalized, resampled to
 $T_a=300$ time steps via linear interpolation, and concatenated along
@@ -741,7 +742,10 @@ Tri-Modal (ST)    & $0.699\pm0.047$ & $[0.449,0.863]$ & $0.607\pm0.063$ & 0.688 
   & $\mathbf{0.629\pm0.021}$ & $\mathbf{0.688}$ \\
 \bottomrule
 \multicolumn{5}{p{0.95\columnwidth}}{\scriptsize ST~=~single-task,
-MT~=~multi-task. $^{\ddagger}$The
+MT~=~multi-task. All rows except Proposed~(MT) use 120-dim
+MFCC-only audio; the Proposed~(MT) row uses the extended 199-dim
+MFCC+COVAREP+FORMANT audio (Section~\ref{sec:features}).
+$^{\ddagger}$The
 face-only row reflects the feature pipeline used throughout this table.
 Section~\ref{sec:sentinel} shows this configuration is depressed to chance
 by an OpenFace $-100$ missing-data sentinel; with sentinel-carrying frames
@@ -1014,9 +1018,8 @@ AVEC-2017 text \cite{ringeval2017}       & T     & Dev & 0.49 & --- & --- \\
 Williamson et al.\ \cite{williamson2016} & A+V   & Dev & 0.57 & --- & --- \\
 Gong \& Poellabauer \cite{gong2017}      & A+V+T & Dev & 0.70 & --- & --- \\
 Ray et al.\ \cite{ray2019}               & A+T   & Dev & --- & 0.80 & --- \\
-Shen et al.\ \cite{shen2022}             & A+V+T & Dev (ext.) & --- & 0.83 & --- \\
 \textbf{This work} & \textbf{F+A+T} & \textbf{Dev}
-  & $\mathbf{0.629}$ & $0.658$ & 0.286 \\
+  & $\mathbf{0.629}$ & $0.658$ & 0.286$^{\ddagger}$ \\
 \textbf{This work} & \textbf{F+A+T} & \textbf{Test}
   & $\mathbf{0.585}$ & $\mathbf{0.706}$ & $\mathbf{0.000}^{\dagger}$ \\
 \bottomrule
@@ -1024,7 +1027,12 @@ Shen et al.\ \cite{shen2022}             & A+V+T & Dev (ext.) & --- & 0.83 & ---
 A=Audio, V=Video, T=Text, F=Face AUs. `---' = not reported by
 authors. Dev row: F1~$0.629\pm0.021$, AUC~$0.658\pm0.029$; Test row
 ($N{=}47$).} \\
-\multicolumn{6}{p{0.95\columnwidth}}{\scriptsize Shen et al.\ use an extended DAIC-WOZ split, not directly comparable to Dev/Test above.} \\
+\multicolumn{6}{p{0.95\columnwidth}}{\scriptsize $^{\ddagger}$The Dev
+F1/AUC use the headline train-tuned threshold
+(Section~\ref{subsec:threshold}); the Dev TPR Gap uses the fairness
+audit's independently dev-tuned threshold ($\tau{=}0.325$,
+Table~\ref{tab:fairness}), so these two Dev-row entries are not from
+a single shared threshold.} \\
 \multicolumn{6}{p{0.95\columnwidth}}{\scriptsize $^{\dagger}$Equal but low TPR (0.286 both groups); 10-fold CV gives $0.415\pm0.211$ (Sec.~\ref{sec:kfold}).} \\
 \end{tabular}
 \end{table}
@@ -1033,8 +1041,7 @@ authors. Dev row: F1~$0.629\pm0.021$, AUC~$0.658\pm0.029$; Test row
   \centering
   \includegraphics[width=\columnwidth]{fig5_sota.png}
   \caption{DAIC-WOZ dev F1: this work vs.\ classical (non-transformer)
-    published baselines. Recent transformer-based methods
-    \cite{ray2019,shen2022} report higher AUC on different metrics/splits
+    published baselines. Ray et al.\ \cite{ray2019} report higher AUC on different metrics/splits
     and are not directly comparable on this figure (see Table~\ref{tab:sota}).}
   \label{fig:sota}
 \end{figure}
@@ -1043,8 +1050,8 @@ Our system achieves dev F1\,$=0.629\pm0.021$, outperforming three older
 baselines (AVEC-2017 audio, AVEC-2017 text, Williamson et al.) on F1,
 while remaining below Gong \& Poellabauer's topic-modeling result
 (F1\,$=0.70$); see Table~\ref{tab:sota} for the full comparison.
-More recent transformer-based methods \cite{ray2019,shen2022} achieve
-higher AUC (0.80--0.83) using pre-trained language models and larger
+More recent transformer-based methods \cite{ray2019} achieve
+higher AUC ($\approx$0.80) using pre-trained language models and larger
 GPU-trained architectures; our system does not claim to surpass these.
 Our contribution is methodological: controlled ablation with an
 identical model class, symptom-level multi-task learning, and honest
@@ -1056,7 +1063,8 @@ On the held-out test split ($N{=}47$), the model achieves
 F1\,$=0.585$ and AUC\,$=0.706$---the latter \emph{exceeding} the dev
 AUC of $0.658\pm0.029$, indicating the model generalizes rather than
 overfitting to the dev set. The test F1 drop ($0.629\to0.585$) is
-expected: the decision threshold is derived from the dev set and may not
+expected: per Section~\ref{subsec:threshold}, the multi-task model's
+decision threshold is tuned on the training set and may not
 optimally calibrate for the test distribution. The test-set gender
 fairness audit reveals a TPR gap of~0.000: male and female depressed
 participants are detected at \emph{equal} rates, but that rate is only
@@ -1456,7 +1464,7 @@ finding is that FORMANT features alone---just 5 dimensions per
 frame---reach AUC~$0.688\pm0.060$, comparable to the 120-dim MFCC
 representation; this is consistent with the clinical literature
 linking formant structure (vowel space) to depressed speech
-\cite{scherer2015vowel}, and is worth follow-up with a larger, dedicated
+\cite{scherer2016vowel}, and is worth follow-up with a larger, dedicated
 seed count rather than being treated as confirmed here.
 
 % ============================================================
@@ -1509,34 +1517,18 @@ channels.
 Dropping frames that carry the sentinel (a sentinel marks a failed
 track, so the whole frame is untrustworthy) and changing nothing else
 raises the face-only configuration from AUC~$0.513\pm0.113$ to
-$0.708\pm0.042$ across the original 5-seed protocol---every seed
+$0.708\pm0.042$ at an initial 5-seed pilot---every seed
 improves, and seed variance falls $2.7\times$ (Fig.~\ref{fig:sentinel}).
-
-\noindent\textbf{Correcting an unreproducible $p$-value:} The original
-draft of this analysis reported this 5-seed comparison as
-Wilcoxon signed-rank $p{=}0.031$. A post-hoc check---prompted by an
-external review noting that an exact two-sided Wilcoxon test at
-$n{=}5$ cannot fall below $p{=}0.0625$ under any outcome (the same
-constraint this paper states explicitly for the multi-task comparison
-in Section~\ref{sec:ablation})---found that recomputing the exact test
-directly on this comparison's own stored per-seed AUC values gives
-$p{=}0.0625$, not $0.031$; we could not reproduce $0.031$ under the
-exact method, the normal approximation, or a one-sided test on this
-data, and treat it as a computational error in the original report
-rather than a different valid test. Because $0.0625$ exceeds the
-conventional $\alpha{=}0.05$ threshold, the original 5-seed comparison
-does not, by itself, establish significance. Rather than patch the
-number, we re-ran both arms (original sentinel-affected features vs.\
-cleaned) from scratch at $n{=}30$ seeds. This confirms a real, large
-effect with a properly computed $p$-value: 28/30 seeds improve,
-AUC~$0.506\pm0.131\to0.678\pm0.048$, Wilcoxon signed-rank
-$p{=}9.3{\times}10^{-6}$, Cohen's~$d{=}1.28$. We treat this scaled
-result, not the original 5-seed number, as this paper's confirmatory
-evidence for the sentinel effect, and note it is one of two effects in
-this paper found significant only after scaling past an
-originally-underpowered or, in this case, miscomputed 5-seed test---the
-other being the multi-task comparison in Section~\ref{sec:ablation}.
-This is a data-quality effect rather than a modelling one.
+An exact two-sided Wilcoxon signed-rank test cannot reach $p<0.05$ at
+$n{=}5$ under any outcome (minimum $p{=}0.0625$; the same constraint
+noted for the multi-task comparison in Section~\ref{sec:ablation}), so
+this pilot was underpowered by construction. We therefore re-ran both
+arms (original sentinel-affected features vs.\ cleaned) from scratch
+at $n{=}30$ seeds: 28/30 seeds improve, AUC~$0.506\pm0.131\to
+0.678\pm0.048$, Wilcoxon signed-rank $p{=}9.3{\times}10^{-6}$,
+Cohen's~$d{=}1.28$. We report this $n{=}30$ result as the paper's
+confirmatory evidence for the sentinel effect. This is a data-quality
+effect rather than a modelling one.
 
 Applying the same fix to the single-task tri-modal configuration
 (\texttt{ConfigurableFusionModel}, the shared architecture behind every
@@ -1674,7 +1666,8 @@ additionally report test-split results ($N{=}47$): F1\,$=0.585$,
 AUC\,$=0.706$ (see Table~\ref{tab:sota}). The test AUC exceeds
 the dev AUC, providing evidence of generalization. The F1 decrease
 ($0.629\to0.585$) is attributable to threshold mismatch between
-the dev-tuned threshold and the test distribution. Pooled 10-fold
+the train-tuned threshold (Section~\ref{subsec:threshold}) and the
+test distribution. Pooled 10-fold
 cross-validation over all 188 participants
 (Section~\ref{sec:kfold}) corroborates that a single fixed split is
 an unreliable estimator at this sample size: F1 and TPR-gap both
@@ -1882,7 +1875,7 @@ directly: the tri-modal \texttt{ConfigurableFusionModel} (identical
 architecture and training schedule as the main ablation) is trained on
 stratified subsamples of the 107-participant train pool at 30\%, 50\%,
 70\%, 85\%, and 100\% (3 seeds each), evaluated throughout on the
-fixed, never-subsampled dev set ($N{=}33$). AUC rises from
+fixed, never-subsampled dev set ($N{=}34$). AUC rises from
 $0.572\pm0.036$ at $N{=}32$ to $0.725\pm0.031$ at $N{=}91$
 (Fig.~\ref{fig:learningcurve}); the small dip at the full pool
 ($N{=}107$: AUC~$=0.693\pm0.025$) falls within the overlapping
@@ -1957,9 +1950,12 @@ single-task baseline's 70-seed mean ($0.597\pm0.076$) is close to the
 originally-reported $0.607\pm0.063$---the original 5-seed test's main
 limitation was that $n{=}5$ is structurally too small for an exact
 Wilcoxon test to reach significance, not a badly biased mean.
-Multi-task learning is therefore now reported as a
-statistically confirmed headline result rather than an
-encouraging trend. Two additional design choices---cross-modal
+The combined multi-task intervention (prediction heads plus extended
+199-dim audio features, Section~\ref{sec:ablation}) is therefore now
+reported as a statistically confirmed result rather than an
+encouraging trend, though it confirms that combined intervention
+rather than isolating multi-task learning alone as the causal factor.
+Two additional design choices---cross-modal
 attention fusion and Equalized Odds fairness training---remain
 evaluated at $n{=}10$ paired Wilcoxon seeds and are reported as
 exploratory, not headline, contributions.
@@ -2133,7 +2129,7 @@ World Health Organization, ``Depressive disorder (depression),''
 \bibitem{gratch2014}
 J.~Gratch, R.~Artstein, G.~Lucas, G.~Stratou, S.~Scherer,
 A.~Nazarian, R.~Wood, J.~Boberg, D.~DeVault, S.~Marsella,
-D.~R.~Traum, S.~Darby, and L.-P.~Morency,
+D.~Traum, A.~Rizzo, and L.-P.~Morency,
 ``The Distress Analysis Interview Corpus of human and computer
 interviews,'' in \textit{Proc. Int. Conf. Lang. Resources Eval.
 (LREC)}, Reykjavik, Iceland, 2014, pp.~3123--3128.
@@ -2199,30 +2195,24 @@ S.~Sarkar,
 Kaggle dataset, 2022. [Online]. Available:
 \url{https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health}
 
-\bibitem{shen2022}
-Y.~Shen, C.~Yang, and C.-Y.~Lin,
-``A transformer-based multimodal depression detection system,''
-\textit{IEEE Trans. Affective Comput.}, vol.~13, no.~4,
-pp.~1--12, 2022.
-
 \bibitem{covarep2014}
 G.~Degottex, J.~Kane, T.~Drugman, T.~Raitio, and S.~Scherer,
 ``COVAREP---A collaborative voice analysis repository for speech
 technologies,'' in \textit{Proc. IEEE Int. Conf. Acoust. Speech
 Signal Process. (ICASSP)}, Florence, Italy, 2014, pp.~960--964.
 
-\bibitem{scherer2015}
-S.~Scherer, G.~Stratou, and L.-P.~Morency,
+\bibitem{scherer2013voice}
+S.~Scherer, G.~Stratou, J.~Gratch, and L.-P.~Morency,
 ``Investigating voice quality as a speaker-independent indicator
 of depression and PTSD,'' in \textit{Proc. Interspeech},
-Dresden, Germany, 2015, pp.~847--851.
+Lyon, France, 2013, pp.~847--851.
 
-\bibitem{scherer2015vowel}
-S.~Scherer, J.~Gratch, A.~Rizzo, and L.-P.~Morency,
+\bibitem{scherer2016vowel}
+S.~Scherer, G.~Lucas, J.~Gratch, A.~Rizzo, and L.-P.~Morency,
 ``Self-reported symptoms of depression and PTSD are associated with
 reduced vowel space in screening interviews,''
-\textit{IEEE Trans. Affective Comput.}, vol.~6, no.~4,
-pp.~1--10, 2015.
+\textit{IEEE Trans. Affective Comput.}, vol.~7, no.~1,
+pp.~59--73, 2016.
 
 \bibitem{hardt2016}
 M.~Hardt, E.~Price, and N.~Srebro,
