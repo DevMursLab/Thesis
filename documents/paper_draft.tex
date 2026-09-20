@@ -1,12 +1,19 @@
 % ============================================================
 % IEEE Access / IEEE Transactions on Affective Computing
 % Tri-Modal Depression Risk Detection
-% Author: Md. Mursalin, Netrokona University
+% [Author/affiliation comment removed for blind-review draft]
 % ============================================================
 
 \documentclass[journal]{IEEEtran}
 
 % ---- Packages ----
+% T1 fontenc + lmodern: without these, pdfTeX's default OT1 fonts do not
+% embed a proper ToUnicode map for ligatures (fi, fl, ...), so extracted
+% text reads "ndings" for "findings", "rst" for "first", etc. This does
+% not affect the rendered glyphs but breaks copy-paste, screen readers,
+% and automated text-similarity screening.
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithm}
 \usepackage{algorithmic}
@@ -27,21 +34,13 @@
 DAIC-WOZ: Sentinel Artifacts, Interviewer Shortcuts, and Cross-Corpus
 Transfer}
 
-\author{Md.~Mursalin
-and~Md.~Shovon%
+\author{Author Name(s) Omitted for Review%
 \thanks{Manuscript received \today.
-Md. Mursalin is with the Department of Computer Science and
-Engineering, Netrokona University, Netrokona 2400, Bangladesh
-(corresponding author, e-mail: mursalinshuvo27@gmail.com).
-Md. Shovon, Department of Computer Science and Engineering, Netrokona
-University, supervised this work.
-Dataset: DAIC-WOZ provided by USC Institute for Creative Technologies.
-Code: \url{https://github.com/DevMursLab/Thesis}
-(DOI: \url{https://doi.org/10.5281/zenodo.22806159}).}%
+Dataset: DAIC-WOZ provided by USC Institute for Creative Technologies.}%
 }
 
 \markboth{IEEE Access,~Vol.~XX, No.~XX, 2026}%
-{Mursalin \MakeLowercase{\textit{et al.}}: A Validity Audit of Tri-Modal Depression Detection on DAIC-WOZ}
+{Author \MakeLowercase{\textit{et al.}}: A Validity Audit of Tri-Modal Depression Detection on DAIC-WOZ}
 
 \begin{document}
 
@@ -79,8 +78,11 @@ $p{=}8.1{\times}10^{-7}$, $d{=}0.72$), while cross-modal attention and
 an Equalized Odds fairness loss remain non-significant at $n{=}10$
 seeds and are reported as transparent negative/inconclusive findings.
 On the held-out test split ($N{=}47$), the model achieves
-F1~$=0.585$, AUC~$=0.706$, exceeding dev AUC and indicating
-generalization; pooled 10-fold cross-validation over all 188
+F1~$=0.585$, AUC~$=0.706$, numerically above the dev AUC though well
+within the $\approx$0.08--0.09 standard error expected for AUC at
+this $N$, so this should be read as evidence the model did not
+overfit the dev set rather than as evidence of superior test
+performance; pooled 10-fold cross-validation over all 188
 participants shows the test split's nominal gender-TPR parity is not
 stable across folds (mean TPR gap~$0.415\pm0.211$). Three convergent
 explainability methods identify audio as the most informative
@@ -267,12 +269,20 @@ multimodal audio-visual handcrafted features. Gong and Poellabauer
 \cite{gong2017} combined LDA topic-model text features with acoustic
 features to reach F1~=~0.70. Ray et al.\ \cite{ray2019} employed
 BERT for transcript encoding alongside audio features, achieving
-AUC~=~0.80. Several
+AUC~=~0.80. More recently, Jung et al.\ \cite{jung2024hique} model
+the hierarchical structure of interviewer questions directly
+(macro-F1~$=0.79$ on DAIC-WOZ), and Zhang et al.\
+\cite{zhang2024wav2vec} show transfer learning with wav2vec~2.0
+speech representations improves low-resource depression detection.
+Several
 of these higher numbers are obtained with interviewer text included;
 recent validity audits \cite{burdisso2024therapist,patapati2025invalid}
 show this can inflate performance through interview-structure
 shortcuts rather than depression-specific language, a concern we
-test directly in our own pipeline (Section~\ref{sec:shortcut}).
+test directly in our own pipeline (Section~\ref{sec:shortcut})---and,
+notably, Jung et al.'s own approach explicitly models interviewer
+question structure as a primary signal, which the audit in
+Section~\ref{sec:shortcut} suggests warrants the same scrutiny.
 
 To our knowledge, no prior DAIC-WOZ study combines all of: (1)~extended
 acoustic features (MFCC+COVAREP+FORMANT), (2)~an Equalized Odds
@@ -1061,9 +1071,11 @@ than raw performance advancement. Fig.~\ref{fig:sota} visualizes this
 positioning against the classical (non-transformer) baselines.
 
 On the held-out test split ($N{=}47$), the model achieves
-F1\,$=0.585$ and AUC\,$=0.706$---the latter \emph{exceeding} the dev
-AUC of $0.658\pm0.029$, indicating the model generalizes rather than
-overfitting to the dev set. The test F1 drop ($0.629\to0.585$) is
+F1\,$=0.585$ and AUC\,$=0.706$---the latter numerically
+above the dev AUC of $0.658\pm0.029$, though the two are well within
+each other's sampling noise at these split sizes ($N{=}34$/$47$); we
+read this as an absence of evidence for overfitting to the dev set
+rather than as evidence of generalization. The test F1 drop ($0.629\to0.585$) is
 expected: per Section~\ref{subsec:threshold}, the multi-task model's
 decision threshold is tuned on the training set and may not
 optimally calibrate for the test distribution. The test-set gender
@@ -1129,10 +1141,17 @@ threshold.} \\
 \end{figure}
 
 The Equal-Opportunity gap of~0.286 reveals that the model correctly
-detects depression in 100\% of depressed women but only 71\% of
-depressed men. A clinical tool missing 29\% of depressed men is
-unacceptable---this gap motivates the Equalized Odds constraint as
-a \emph{clinically necessary} design choice.
+detects depression in 100\% of depressed women (5/5) but only 71\% of
+depressed men (5/7) on this fixed dev split. These are single-split
+point estimates from as few as 5~participants per group, so the exact
+percentages should not be over-interpreted; Section~\ref{sec:kfold}'s
+pooled 10-fold cross-validation (mean TPR gap~$0.415\pm0.211$) is the
+more reliable characterization of the underlying disparity. Even
+allowing for this sample-size caveat, a clinical tool that misses a
+sizeable share of depressed men on this split motivates the
+Equalized Odds constraint as a \emph{clinically necessary} design
+choice, though we treat the specific 71\%/100\% figures as
+illustrative rather than precise.
 
 \subsection{Fairness Loss Effectiveness}
 
@@ -1677,8 +1696,11 @@ difference between tri-modal and audio-only configurations
 numerically higher (Table~\ref{tab:ablation}), but the gap is not
 distinguishable from sampling noise at this sample size. We
 additionally report test-split results ($N{=}47$): F1\,$=0.585$,
-AUC\,$=0.706$ (see Table~\ref{tab:sota}). The test AUC exceeds
-the dev AUC, providing evidence of generalization. The F1 decrease
+AUC\,$=0.706$ (see Table~\ref{tab:sota}). The test AUC is numerically
+higher than the dev AUC, but at $N{=}34$/$47$ the two estimates are
+well within each other's sampling noise, so we treat this as an
+absence of evidence for overfitting rather than confirmed
+generalization. The F1 decrease
 ($0.629\to0.585$) is attributable to threshold mismatch between
 the train-tuned threshold (Section~\ref{subsec:threshold}) and the
 test distribution. Pooled 10-fold
@@ -2010,8 +2032,10 @@ example of what resolving an underpowered comparison can reveal, and
 recommend the same rescaling wherever feasible for the two
 comparisons that remain inconclusive.
 Test-split evaluation ($N{=}47$) yields F1\,$=0.585$ and
-AUC\,$=0.706$, exceeding the dev AUC and providing evidence of
-generalization beyond the dev set. The test-split TPR gap is
+AUC\,$=0.706$, numerically above the dev AUC but within each split's
+sampling noise at $N{=}34$/$47$, providing an absence of evidence for
+overfitting rather than confirmed generalization beyond the dev set.
+The test-split TPR gap is
 nominally~0.000, but pooled 10-fold cross-validation across all
 188 participants (Section~\ref{sec:kfold}) shows this single-split
 result is not stable (mean TPR gap $0.415\pm0.211$ across folds),
@@ -2072,10 +2096,8 @@ agreement. EATD-Corpus, WU3D, and the Kaggle mental-health text corpus
 diagnostic-specificity probes (Section~\ref{sec:discussion}), are all
 publicly available datasets. All source code, trained model
 configurations, and result artifacts (excluding the restricted raw
-dataset) are available at
-\url{https://github.com/DevMursLab/Thesis}, with the exact version
-underlying this manuscript archived at
-\url{https://doi.org/10.5281/zenodo.22806159} (v1.0.0).
+dataset) will be made available at a public repository upon
+acceptance; the link is omitted here to preserve reviewer anonymity.
 
 \subsection*{Reproducibility Details}
 All experiments use Python~3.10, PyTorch~$\geq$2.0, scikit-learn~$\geq$1.3,
@@ -2095,9 +2117,9 @@ inter-seed variance reported throughout this paper.
 
 % ============================================================
 \section*{Author Contributions}
-Md.~Mursalin: conceptualization, methodology, software, formal
+Author 1: conceptualization, methodology, software, formal
 analysis, investigation, data curation, writing---original draft,
-visualization. Md.~Shovon (Supervisor): validation, writing---review
+visualization. Author 2 (Supervisor): validation, writing---review
 and editing, supervision. Both authors read and approved the final
 manuscript.
 
@@ -2176,6 +2198,18 @@ A.~Ray, S.~Kumar, R.~Reddy, P.~Mukherjee, and R.~Garg,
 ``Multi-level attention network using text, audio and video
 for depression prediction,'' in \textit{Proc. 9th Int. Workshop
 Audio/Visual Emotion Challenge (AVEC)}, 2019, pp.~81--88.
+
+\bibitem{jung2024hique}
+J.~Jung, C.~Kang, J.~Yoon, S.~Kim, and J.~Han,
+``HiQuE: Hierarchical question embedding network for multimodal
+depression detection,'' in \textit{Proc. 33rd ACM Int. Conf. Inf.
+Knowl. Manage. (CIKM)}, 2024.
+
+\bibitem{zhang2024wav2vec}
+X.~Zhang, X.~Zhang, W.~Chen, C.~Li, and C.~Yu,
+``Improving speech depression detection using transfer learning with
+wav2vec 2.0 in low-resource environments,''
+\textit{Sci. Rep.}, vol.~14, art.~9543, 2024.
 
 \bibitem{burdisso2024therapist}
 S.~Burdisso, E.~Reyes-Ram\'irez, E.~Villatoro-Tello,
