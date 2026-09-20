@@ -48,9 +48,11 @@ results/metrics/*
 !results/figures/fig*.png
 !results/metrics/phase*.json
 !results/metrics/test_evaluation.json
-!results/metrics/multitask_significance_scaled.json
-!results/metrics/multitask_significance_scaled_per_seed.csv
+!results/metrics/multitask_significance_scaled_SUPERSEDED_threshold_confound.json
+!results/metrics/multitask_significance_scaled_SUPERSEDED_threshold_confound_per_seed.csv
 !results/metrics/multitask_significance_scaled_SUPERSEDED_metric_bug.json
+!results/metrics/multitask_threshold_matched.json
+!results/metrics/multitask_threshold_matched_per_seed.csv
 !results/metrics/face_sentinel_significance_scaled.json
 !results/metrics/face_sentinel_significance_scaled_per_seed.csv
 

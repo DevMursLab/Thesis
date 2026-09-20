@@ -75,10 +75,16 @@ representations are corpus/language-specific rather than transferable
 biomarkers. Within the same controlled testbed, symptom-level
 multi-task learning raises mean macro-F1 from $0.607$ to $0.629$ at
 an originally-reported, underpowered 5-seed sample ($n{\approx}67$
-needed for 80\% power); scaling to $n{=}70$ paired seeds confirms the
-effect of the combined intervention (multi-task heads plus extended
-audio features; macro-F1 $0.597\pm0.076\to0.657\pm0.037$, Wilcoxon
-$p{=}8.1{\times}10^{-7}$, $d{=}0.72$), while cross-modal attention and
+needed for 80\% power); scaling to $n{=}70$ paired seeds with a
+threshold-matched procedure (both arms tuned identically, ruling out
+a threshold-estimation confound flagged by external review) confirms
+a robust F1 effect for the combined intervention (multi-task heads
+plus extended audio features; macro-F1
+$0.597\pm0.076\to0.685\pm0.039$, Wilcoxon $p{=}1.8{\times}10^{-9}$,
+$d{=}1.00$)---though the same 70~seeds show no corresponding AUC
+improvement ($0.670\to0.664$, $p{=}0.886$), indicating the effect is
+specifically a calibration/threshold-stability gain rather than a
+discriminative-power gain. Cross-modal attention and
 an Equalized Odds fairness loss remain non-significant at $n{=}10$
 seeds and are reported as transparent negative/inconclusive findings.
 On the held-out test split ($N{=}47$), the model achieves
@@ -196,9 +202,12 @@ confounds. Concretely, we contribute:
   the original 5-seed multi-task test showed it was structurally too
   small for an exact Wilcoxon test to reach significance under any
   outcome ($n{\approx}67$ needed for 80\% power), so we scaled that
-  comparison to 70~paired seeds: multi-task learning is a confirmed
-  effect (51/70~seeds, Wilcoxon $p{=}8.1{\times}10^{-7}$, $d{=}0.72$),
-  a larger effect than the original power calculation assumed.
+  comparison to 70~paired seeds with a threshold-matched procedure
+  (both arms tuned identically, closing a possible
+  threshold-estimation confound): multi-task learning is a confirmed
+  F1 effect (59/70~seeds, Wilcoxon $p{=}1.8{\times}10^{-9}$, $d{=}1.00$)
+  that does not extend to AUC (36/70~seeds, $p{=}0.886$), indicating a
+  calibration rather than discrimination improvement.
   Cross-modal attention and Equalized Odds fairness training remain
   evaluated at 10~seeds and do not reach significance at this sample
   size (attention $p{=}0.496$; fairness $p{=}0.813$), with a post-hoc
@@ -802,47 +811,64 @@ paired seeds would be needed for 80\% power at $\alpha{=}0.05$; we
 therefore scaled the comparison to $n{=}70$ paired seeds (seeds
 $1$--$70$), re-training both arms from scratch at each seed.
 
-The scaled test resolves the question decisively. Across 70 seeds,
-the multi-task model remains stable and strong (mean
-F1~$=0.657\pm0.037$), while the single-task baseline shows somewhat
-higher variance than the original 5-seed sample implied (mean
-F1~$=0.597\pm0.076$, range $[0.46,0.77]$ across seeds, vs.\ the
-originally-reported $0.607\pm0.063$): several single-task seeds
-show reduced F1 despite acceptable AUC ($0.60$--$0.72$), suggesting
-the single-task model's discriminative ranking is often fine but its
-decision threshold is more seed-sensitive on this small dev set than
-the multi-task heads and modality dropout, which regularize this
-partially away. The paired Wilcoxon test is now unambiguous: multi-task
-wins 51 of 70 seed pairs (Wilcoxon $p{=}8.1{\times}10^{-7}$,
-Cohen's~$d{=}0.72$)---a medium-to-large effect that is in fact larger
-than the $d{=}0.34$ assumed for the original power calculation,
-meaning that calculation was itself conservative and fewer than the
-estimated 67~seeds would likely have sufficed; scaling to 70 removes
-any doubt. The original 5-seed mean ($0.607\pm0.063$) is close to,
-not dramatically below, the 70-seed mean, so its main limitation was
-that $n{=}5$ is structurally too few for an exact Wilcoxon test to
-reach significance (Section~\ref{sec:ablation} above), not that the
-mean itself was badly biased. This is nonetheless a concrete,
-within-pipeline illustration of the seed-sampling risk this paper
-otherwise raises as an external methodological concern
-\cite{bouthillier2021}: small seed counts can leave a real,
-confirmable effect looking merely suggestive.
+The scaled test at $n{=}70$ seeds confirmed a significant F1 effect
+(multi-task wins 51/70 seed pairs, Wilcoxon $p{=}8.1{\times}10^{-7}$,
+Cohen's~$d{=}0.72$), but a methodological concern was subsequently
+raised: the single-task arm tunes its decision threshold on dev
+probabilities ($N{=}34$) while the multi-task arm tuned on
+\emph{train} probabilities ($N{=}107$); since F1 is
+threshold-dependent, a more precisely estimated threshold (more data
+to tune on) could itself produce an F1 advantage that looks like a
+multi-task learning effect but is actually a threshold-estimation
+artifact. This concern is substantive: recomputing a paired Wilcoxon
+test on AUC alone from that same 70-seed run---threshold-independent,
+so immune to this confound---shows no multi-task advantage
+whatsoever (single-task AUC~$0.670\pm0.052$ vs.\ multi-task
+AUC~$0.655\pm0.054$, multi-task wins only 29/70~seeds, $p{=}0.145$,
+$d{=}-0.22$, i.e.\ a small trend in the \emph{single-task} model's
+favor). Rather than leave this unresolved, we re-ran both arms a
+third time with the threshold procedure held identical: both now
+tune on dev, matching the single-task arm's original procedure
+exactly. Two results follow from this threshold-matched re-test. (1)
+The F1 effect does not shrink under matched conditions---if anything
+it strengthens: multi-task wins 59/70~seed pairs
+(F1~$0.597\pm0.076\to0.685\pm0.039$, Wilcoxon
+$p{=}1.8{\times}10^{-9}$, Cohen's~$d{=}1.00$), which rules out the
+threshold-asymmetry confound as the explanation for the F1 advantage.
+(2) The AUC null result is confirmed under the matched procedure too
+(single-task~$0.670\pm0.052$ vs.\ multi-task~$0.664\pm0.063$,
+multi-task wins only 36/70, $p{=}0.886$, $d{=}-0.08$). We report both
+results together because they answer different questions: multi-task
+learning delivers a robust, confirmed improvement in F1---i.e., in
+how well a single decision threshold discriminates depressed from
+non-depressed participants on this dev set---but no improvement in
+AUC, i.e., no improvement in the model's underlying ability to rank
+participants by predicted risk. We read this as evidence that the
+multi-task heads and modality dropout act primarily as a
+\emph{calibration/threshold-stability} regularizer on this small
+dataset, not as a discriminative-power improvement; a deployment that
+cares about ranking (e.g., triage) should not expect the AUC gain
+that the F1 result alone might suggest.
 
-Taken together, these results show multi-task learning is a
-statistically confirmed result at this sample size, not merely an
-encouraging trend. We note this comparison still bundles
-two simultaneous changes---the multi-task prediction heads and the
-extended 199-dim MFCC+COVAREP+FORMANT audio features, versus the
-single-task baseline's 120-dim MFCC-only audio---so this result
-confirms the combined intervention rather than isolating multi-task
-learning alone as the causal factor; disentangling the two would
-require a further controlled ablation, which we leave to future work.
-The cross-modal-attention and fairness-loss comparisons in
+Taken together, these results show multi-task learning delivers a
+statistically confirmed F1 improvement at this sample size, not
+merely an encouraging trend, while stopping short of an AUC
+improvement---a more precise characterization than either the
+original 5-seed report or a naive reading of the F1 result alone
+would give. We note this comparison still bundles two simultaneous
+changes---the multi-task prediction heads and the extended 199-dim
+MFCC+COVAREP+FORMANT audio features, versus the single-task
+baseline's 120-dim MFCC-only audio---so this result confirms the
+combined intervention rather than isolating multi-task learning
+alone as the causal factor; disentangling the two would require a
+further controlled ablation, which we leave to future work. The
+cross-modal-attention and fairness-loss comparisons in
 Section~\ref{sec:fairness} remain at $n{=}10$ and are not rescaled
 here, so they retain the inconclusive-rather-than-null status
 described above. Fig.~\ref{fig:p7p8} summarizes both the original
 5-seed sample and the scaled 70-seed test side by side, and
-Fig.~\ref{fig:seeds} shows the full 70-seed paired distribution.
+Fig.~\ref{fig:seeds} shows the full threshold-matched 70-seed paired
+F1 and AUC distributions.
 
 \noindent\textbf{Multiple-comparisons correction:} The three design
 choices evaluated in this testbed---multi-task learning, cross-modal
@@ -851,28 +877,27 @@ treated as one family of comparisons, since all three test whether a
 proposed architectural addition improves on a shared tri-modal
 baseline. Applying a Bonferroni correction across this family of
 three ($\alpha=0.05/3=0.0167$) does not change any conclusion: the
-scaled multi-task result remains significant by a wide margin
-($p{=}8.1{\times}10^{-7}\times3=2.4{\times}10^{-6}$, still far below
-$\alpha$), while the attention ($p{=}0.496$) and fairness ($p{=}0.813$)
-comparisons remain non-significant under either the corrected or
-uncorrected threshold. We report this correction for completeness
-rather than because it changes the substantive finding: at the
-sample sizes and effect sizes involved here, multi-task learning
-would survive a far stricter correction than Bonferroni, and the two
-inconclusive comparisons were already reported as such.
+threshold-matched multi-task F1 result remains significant by a wide
+margin ($p{=}1.8{\times}10^{-9}\times3=5.3{\times}10^{-9}$, still far
+below $\alpha$), while the attention ($p{=}0.496$) and fairness
+($p{=}0.813$) comparisons remain non-significant under either the
+corrected or uncorrected threshold, as does the multi-task AUC
+comparison ($p{=}0.886$). We report this correction for completeness
+rather than because it changes the substantive finding: the
+confirmed F1 effect would survive a far stricter correction than
+Bonferroni, and the null/inconclusive comparisons were already
+reported as such.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig4_seed_consistency.png}
-  \caption{Single-task baseline vs.\ proposed multi-task model F1,
-    box plot with individual seeds overlaid, across the full scaled
-    test ($n{=}70$ paired seeds). The single-task baseline shows
-    somewhat higher seed-to-seed spread (range $[0.46,0.77]$, mean
-    $0.597\pm0.076$) than the multi-task model's tighter cluster
-    (mean $0.657\pm0.037$), consistent with the Statistical note. At
-    the original $n{=}5$ sample this comparison was inconclusive
-    ($p{=}0.625$); the full $n{=}70$ test is decisive
-    ($p{=}8.1{\times}10^{-7}$, $d{=}0.72$, wins 51/70).}
+  \caption{Single-task baseline vs.\ proposed multi-task model,
+    threshold-matched $n{=}70$ paired seeds (both arms tuned on dev).
+    \emph{Left:} F1 shows a clear separation (mean
+    $0.597\pm0.076\to0.685\pm0.039$, Wilcoxon $p{=}1.8{\times}10^{-9}$,
+    $d{=}1.00$, wins 59/70). \emph{Right:} AUC shows no separation
+    (mean $0.670\pm0.052\to0.664\pm0.063$, $p{=}0.886$, wins 36/70)---the
+    F1 gain does not reflect improved discrimination.}
   \label{fig:seeds}
 \end{figure}
 
@@ -882,9 +907,9 @@ inconclusive comparisons were already reported as such.
   \caption{Single-task baseline vs.\ proposed multi-task model F1,
     mean\,$\pm$\,std. \emph{Left:} the original 5-seed sample
     ($0.607\pm0.063\to0.629\pm0.021$, underpowered paired test,
-    $p{=}0.625$). \emph{Right:} the scaled 70-seed test
-    ($0.597\pm0.076\to0.657\pm0.037$, confirmed,
-    $p{=}8.1{\times}10^{-7}$). The 70-seed single-task mean is close
+    $p{=}0.625$). \emph{Right:} the threshold-matched, scaled 70-seed
+    test ($0.597\pm0.076\to0.685\pm0.039$, confirmed,
+    $p{=}1.8{\times}10^{-9}$). The 70-seed single-task mean is close
     to the original 5-seed estimate; the decisive difference is that
     $n{=}70$ gives the exact Wilcoxon test enough seeds to reach
     significance, which $n{=}5$ cannot under any outcome.}
@@ -1984,18 +2009,25 @@ split in the original 5-seed sample. A power analysis of that 5-seed
 paired comparison indicated it was underpowered
 ($n{\approx}67$ needed for 80\% power), so we scaled the paired
 Wilcoxon test to $n{=}70$ seeds (Section~\ref{sec:ablation}). This
-confirms a significant effect (51/70~seed pairs favor
-multi-task, $p{=}8.1{\times}10^{-7}$, $d{=}0.72$, larger than the
-$d{=}0.34$ the original power calculation assumed), while the
-single-task baseline's 70-seed mean ($0.597\pm0.076$) is close to the
-originally-reported $0.607\pm0.063$---the original 5-seed test's main
-limitation was that $n{=}5$ is structurally too small for an exact
-Wilcoxon test to reach significance, not a badly biased mean.
+confirms a significant F1 effect once re-run with a threshold-matched
+procedure that closes a confound flagged by external review (59/70~seed
+pairs favor multi-task, $p{=}1.8{\times}10^{-9}$, $d{=}1.00$, larger
+than the $d{=}0.34$ the original power calculation assumed), while an
+AUC re-analysis of the same seeds shows no corresponding
+discrimination improvement ($0.670\to0.664$, $p{=}0.886$)---the
+effect is a calibration/threshold-stability gain, not a
+discrimination gain. The single-task baseline's 70-seed mean
+($0.597\pm0.076$) is close to the originally-reported
+$0.607\pm0.063$---the original 5-seed test's main limitation was
+that $n{=}5$ is structurally too small for an exact Wilcoxon test to
+reach significance, not a badly biased mean.
 The combined multi-task intervention (prediction heads plus extended
 199-dim audio features, Section~\ref{sec:ablation}) is therefore now
-reported as a statistically confirmed result rather than an
+reported as a statistically confirmed F1 result rather than an
 encouraging trend, though it confirms that combined intervention
-rather than isolating multi-task learning alone as the causal factor.
+rather than isolating multi-task learning alone as the causal factor,
+and the confirmed gain is specifically in calibration/threshold
+stability rather than in AUC discrimination.
 Two additional design choices---cross-modal
 attention fusion and Equalized Odds fairness training---remain
 evaluated at $n{=}10$ paired Wilcoxon seeds and are reported as
@@ -2029,13 +2061,16 @@ Odds loss does not significantly reduce the gender TPR gap at this
 sample size ($p{=}0.813$, wins 3/10~seeds). We report both as
 negative/inconclusive findings that characterize the limits of these
 techniques on small clinical cohorts, rather than reframing them as
-successes. By contrast, the multi-task comparison---rescaled to
+successes. By contrast, the multi-task F1 comparison---rescaled to
 $n{=}70$ paired seeds once a power analysis flagged the original
-$n{=}5$ test as underpowered---does reach significance
-($p{=}8.1{\times}10^{-7}$, $d{=}0.72$); we highlight this as an
-example of what resolving an underpowered comparison can reveal, and
-recommend the same rescaling wherever feasible for the two
-comparisons that remain inconclusive.
+$n{=}5$ test as underpowered, and re-run with a threshold-matched
+procedure once external review flagged a further confound---does
+reach significance ($p{=}1.8{\times}10^{-9}$, $d{=}1.00$), though the
+same seeds' AUC comparison does not ($p{=}0.886$); we highlight this
+as an example of what resolving an underpowered, confounded
+comparison can reveal precisely (a calibration gain without a
+discrimination gain), and recommend the same rescaling wherever
+feasible for the two comparisons that remain inconclusive.
 Test-split evaluation ($N{=}47$) yields F1\,$=0.585$ and
 AUC\,$=0.706$, numerically above the dev AUC but within each split's
 sampling noise at $N{=}34$/$47$, providing an absence of evidence for

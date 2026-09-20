@@ -155,15 +155,16 @@ def fig_ablation_ci():
 
 # ============================================================
 def fig_p7_vs_p8():
-    """Fig 3 — Original 5-seed headline F1 (top) vs the scaled 70-seed
-    significance-test means (bottom), shown side by side so the figure
-    itself documents why the comparison was rescaled."""
+    """Fig 3 — Original 5-seed headline F1 (top) vs the threshold-matched
+    70-seed significance-test means (bottom), shown side by side so the
+    figure itself documents why the comparison was rescaled and re-run
+    with a matched threshold-tuning procedure."""
     p8 = load("phase8_validation.json")
-    scaled = load("multitask_significance_scaled.json")
+    scaled = load("multitask_threshold_matched.json")
     p7_tri = 0.607; p7_tri_std = 0.063
     p8_f1  = p8["f1_mean"]; p8_std = p8["f1_std"]
-    s70_single, s70_single_std = scaled["single_task_f1_mean"], scaled["single_task_f1_std"]
-    s70_multi,  s70_multi_std  = scaled["multi_task_f1_mean"],  scaled["multi_task_f1_std"]
+    s70_single, s70_single_std = scaled["f1_threshold_matched"]["single_mean"], scaled["f1_threshold_matched"]["single_std"]
+    s70_multi,  s70_multi_std  = scaled["f1_threshold_matched"]["multi_mean"],  scaled["f1_threshold_matched"]["multi_std"]
 
     fig, axes = plt.subplots(1, 2, figsize=(8.5, 4), sharey=True)
     colors = [NAVY, CORAL]
@@ -187,7 +188,7 @@ def fig_p7_vs_p8():
     for b, v, s in zip(bars2, y2, e2):
         ax.text(b.get_x() + b.get_width()/2, v + s + 0.005, f"{v:.3f}±{s:.3f}",
                 ha="center", fontsize=8, weight="bold")
-    ax.set_title(f"Scaled 70-Seed Test\n(confirmed, $p{{=}}${scaled['wilcoxon_p_value']:.1e})",
+    ax.set_title(f"Threshold-Matched 70-Seed Test\n(confirmed, $p{{=}}${scaled['f1_threshold_matched']['wilcoxon_p_value']:.1e})",
                  fontsize=9.5)
 
     fig.suptitle("Proposed Multi-Task Model vs. Single-Task Baseline", y=1.0)
@@ -199,19 +200,27 @@ def fig_p7_vs_p8():
 
 # ============================================================
 def fig_seed_consistency():
-    """Fig 4 — Single-task vs multi-task F1 distribution over the scaled
-    70-seed significance test (replaces the original 5-seed strip plot,
-    which was too small a sample to show the single-task instability the
-    scaled test revealed)."""
-    scaled = load("multitask_significance_scaled.json")
-    single_f1 = np.array([s["single_f1"] for s in scaled["per_seed"]])
-    multi_f1  = np.array([s["multi_f1"]  for s in scaled["per_seed"]])
+    """Fig 4 — Single-task vs multi-task F1 (left) and AUC (right)
+    distributions over the threshold-matched 70-seed test (both arms
+    dev-tuned). F1 shows a clear separation; AUC shows none, which is
+    the figure-level evidence that the multi-task gain is a
+    calibration/threshold-stability effect rather than a discriminative
+    improvement."""
+    scaled = load("multitask_threshold_matched.json")
+    single_f1  = np.array([s["single_f1"]  for s in scaled["per_seed"]])
+    multi_f1   = np.array([s["multi_f1"]   for s in scaled["per_seed"]])
+    single_auc = np.array([s["single_auc"] for s in scaled["per_seed"]])
+    multi_auc  = np.array([s["multi_auc"]  for s in scaled["per_seed"]])
     n = scaled["n_seeds"]
+    f1_stats  = scaled["f1_threshold_matched"]
+    auc_stats = scaled["auc_threshold_independent"]
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4.2), sharex=False)
+
+    ax = axes[0]
     bp = ax.boxplot([single_f1, multi_f1], widths=0.5, patch_artist=True,
-                     tick_labels=[f"Single-Task\nBaseline\n(mean {single_f1.mean():.3f})",
-                                  f"Proposed\nMulti-Task\n(mean {multi_f1.mean():.3f})"],
+                     tick_labels=[f"Single-Task\n(mean {single_f1.mean():.3f})",
+                                  f"Multi-Task\n(mean {multi_f1.mean():.3f})"],
                      showmeans=True)
     for patch, color in zip(bp["boxes"], [NAVY, CORAL]):
         patch.set_facecolor(color)
@@ -221,9 +230,28 @@ def fig_seed_consistency():
         ax.scatter(np.full(len(f1s), i) + jitter, f1s, s=14, color="black",
                    alpha=0.35, zorder=3)
     ax.set_ylabel("Macro-F1")
-    ax.set_title(f"Single- vs Multi-Task F1 Across {n} Paired Seeds\n"
-                 f"(Wilcoxon $p$={scaled['wilcoxon_p_value']:.1e}, "
-                 f"$d$={scaled['cohens_d']:.2f}, wins {scaled['wins_multitask']})")
+    ax.set_title(f"F1 ($p$={f1_stats['wilcoxon_p_value']:.1e}, "
+                 f"$d$={f1_stats['cohens_d']:.2f}, wins {f1_stats['wins_multitask']})",
+                 fontsize=9.5)
+
+    ax = axes[1]
+    bp2 = ax.boxplot([single_auc, multi_auc], widths=0.5, patch_artist=True,
+                      tick_labels=[f"Single-Task\n(mean {single_auc.mean():.3f})",
+                                   f"Multi-Task\n(mean {multi_auc.mean():.3f})"],
+                      showmeans=True)
+    for patch, color in zip(bp2["boxes"], [NAVY, CORAL]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+    for i, aucs in enumerate([single_auc, multi_auc], start=1):
+        jitter = np.random.default_rng(1).uniform(-0.08, 0.08, size=len(aucs))
+        ax.scatter(np.full(len(aucs), i) + jitter, aucs, s=14, color="black",
+                   alpha=0.35, zorder=3)
+    ax.set_ylabel("AUC")
+    ax.set_title(f"AUC ($p$={auc_stats['wilcoxon_p_value']:.3f}, "
+                 f"$d$={auc_stats['cohens_d']:.2f}, wins {auc_stats['wins_multitask']})",
+                 fontsize=9.5)
+
+    fig.suptitle(f"Threshold-Matched {n}-Seed Test: F1 Separates, AUC Does Not", y=1.0)
     plt.tight_layout()
     plt.savefig(FIGURES / "fig4_seed_consistency.png")
     plt.close()
